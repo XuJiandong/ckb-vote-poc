@@ -1,5 +1,5 @@
 use clap::Parser;
-use sp1_sdk::{include_elf, utils, ProveRequest, Prover, ProverClient, ProvingKey, SP1Stdin};
+use sp1_sdk::{ProveRequest, Prover, ProverClient, ProvingKey, SP1Stdin, include_elf, utils};
 
 const ELF: sp1_sdk::Elf = include_elf!("ckb-vote-verification-program");
 

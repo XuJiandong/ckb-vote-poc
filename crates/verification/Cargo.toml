@@ -5,6 +5,5 @@ edition.workspace = true
 
 [dependencies]
 ckb-vote-types = { path = "../types" }
-ckb-hash = { version = "1.1.0", default-features = false, features = ["ckb-contract"] }
+blake2 = "0.10"
 molecule = "0.9.2"
-ckb-gen-types = { version = "1.1.0", default-features = false, optional = true }

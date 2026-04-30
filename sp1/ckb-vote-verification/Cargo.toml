@@ -1,5 +1,5 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members = [
   "program",
   "script",
@@ -7,11 +7,11 @@ members = [
 
 [workspace.package]
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [workspace.dependencies]
-sp1-build = "6.0.2"
-sp1-sdk = "6.0.2"
-sp1-zkvm = { version = "6.0.2", features = ["lib"] }
+sp1-build = "6.1.0"
+sp1-sdk = "6.1.0"
+sp1-zkvm = { version = "6.1.0", features = ["lib"] }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"

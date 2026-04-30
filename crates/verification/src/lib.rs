@@ -1,6 +1,12 @@
-use ckb_hash::new_blake2b;
+use blake2::Blake2bVarCore;
+use blake2::digest::Update;
+use blake2::digest::core_api::{CoreWrapper, VariableOutputCore};
+use blake2::digest::generic_array::GenericArray;
+use blake2::digest::typenum::U64;
 use ckb_vote_types::molecules::{blockchain, types::BlockVec};
 use molecule::prelude::{Entity, Reader};
+
+const CKB_HASH_PERSONALIZATION: &[u8] = b"ckb-default-hash";
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
@@ -10,10 +16,14 @@ pub enum Error {
 }
 
 fn blake2b_256(data: &[u8]) -> [u8; 32] {
-    let mut hasher = new_blake2b();
-    hasher.update(data);
+    let core = Blake2bVarCore::new_with_params(&[], CKB_HASH_PERSONALIZATION, 0, 32);
+    let mut wrapper = CoreWrapper::<Blake2bVarCore>::from_core(core);
+    Update::update(&mut wrapper, data);
+    let mut full_res: GenericArray<u8, U64> = Default::default();
+    let (mut core, mut buffer) = wrapper.decompose();
+    core.finalize_variable_core(&mut buffer, &mut full_res);
     let mut result = [0u8; 32];
-    hasher.finalize(&mut result);
+    result.copy_from_slice(&full_res[..32]);
     result
 }
 

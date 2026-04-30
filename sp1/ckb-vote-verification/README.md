@@ -1,4 +1,12 @@
 
+## SP1 version 
+version 6.1.0
+
+```
+❯ cargo prove --version
+cargo-prove sp1 (d454975 2026-04-11T01:51:47.829463000Z)
+```
+
 ## Building the Guest Program
 
 To build the guest program, run:
