@@ -1,0 +1,16 @@
+[workspace]
+resolver = "3"
+members = [
+  "crates/types",
+  "crates/verification",
+  "tools/block-dumper",
+]
+
+[workspace.package]
+version = "0.1.0"
+license = "MIT"
+edition = "2024"
+description = "CKB vote system based on zkVM"
+homepage = "https://github.com/nervosnetwork"
+repository = "https://github.com/nervosnetwork"
+rust-version = "1.92.0"
