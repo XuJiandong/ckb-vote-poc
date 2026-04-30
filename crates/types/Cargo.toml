@@ -3,8 +3,12 @@ name = "ckb-vote-types"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["blockchain"]
+blockchain = ["dep:ckb-gen-types"]
+
 [dependencies]
-ckb-gen-types = "1"
+ckb-gen-types = { version = "1.1.0", default-features = false, optional = true }
 molecule = "0.9.2"
 
 [build-dependencies]

@@ -5,12 +5,8 @@ use molecule::prelude::{Entity, Reader};
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     EmptyBlocks,
-    ParentHashMismatch {
-        block_index: usize,
-    },
-    TransactionsRootMismatch {
-        block_index: usize,
-    },
+    ParentHashMismatch { block_index: usize },
+    TransactionsRootMismatch { block_index: usize },
 }
 
 fn blake2b_256(data: &[u8]) -> [u8; 32] {
@@ -68,6 +64,10 @@ fn calc_transactions_root(block: &blockchain::Block) -> [u8; 32] {
     let raw_root = merkle_root(&tx_hashes);
     let witness_root = merkle_root(&witness_hashes);
     merkle_root(&[raw_root, witness_root])
+}
+
+pub fn compute_header_hash(header: &blockchain::Header) -> [u8; 32] {
+    blake2b_256(header.as_slice())
 }
 
 pub fn verify_block_integrity(blocks: &BlockVec) -> Result<(), Error> {

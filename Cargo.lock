@@ -266,6 +266,7 @@ dependencies = [
 name = "ckb-vote-verification"
 version = "0.1.0"
 dependencies = [
+ "ckb-gen-types",
  "ckb-hash",
  "ckb-vote-types",
  "molecule",

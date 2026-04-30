@@ -1,9 +1,9 @@
 use std::fs;
 
 use anyhow::Context;
-use clap::Parser;
 use ckb_gen_types::packed;
 use ckb_vote_types::molecules::types::BlockVec;
+use clap::Parser;
 use molecule::prelude::{Builder, Entity, Reader};
 use serde::Deserialize;
 

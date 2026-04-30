@@ -1,0 +1,11 @@
+[package]
+name = "ckb-vote-verification-program"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+sp1-zkvm = { workspace = true }
+ckb-vote-verification = { path = "../../../crates/verification" }
+ckb-vote-types = { path = "../../../crates/types" }
+molecule = "0.9.2"

@@ -1,0 +1,21 @@
+[package]
+name = "ckb-vote-verification-script"
+version.workspace = true
+edition.workspace = true
+default-run = "execute"
+publish = false
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+hex = "0.4.3"
+sp1-sdk = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+
+[build-dependencies]
+sp1-build = { workspace = true }
+
+[[bin]]
+name = "execute"
+path = "src/main.rs"
+
