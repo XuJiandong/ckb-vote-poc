@@ -19,6 +19,13 @@ pub fn main() {
     let last_block = blocks.get(last_idx).expect("should exist");
     let end_hash = ckb_vote_verification::compute_header_hash(&last_block.header());
 
+    let stats = ckb_vote_verification::collect_blocks_stats(&blocks);
+
     sp1_zkvm::io::commit(&start_hash);
     sp1_zkvm::io::commit(&end_hash);
+    sp1_zkvm::io::commit(&stats.block_count);
+    sp1_zkvm::io::commit(&stats.transaction_count);
+    sp1_zkvm::io::commit(&stats.lock_scripts);
+    sp1_zkvm::io::commit(&stats.type_scripts);
+    sp1_zkvm::io::commit(&stats.cell_deps);
 }

@@ -5,6 +5,7 @@ use blake2::digest::generic_array::GenericArray;
 use blake2::digest::typenum::U64;
 use ckb_vote_types::molecules::{blockchain, types::BlockVec};
 use molecule::prelude::{Entity, Reader};
+use std::collections::VecDeque;
 
 const CKB_HASH_PERSONALIZATION: &[u8] = b"ckb-default-hash";
 
@@ -27,25 +28,36 @@ fn blake2b_256(data: &[u8]) -> [u8; 32] {
     result
 }
 
+fn merge(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
+    let mut data = [0u8; 64];
+    data[..32].copy_from_slice(left);
+    data[32..].copy_from_slice(right);
+    blake2b_256(&data)
+}
+
+// Complete Binary Merkle Tree (CBMT), matching the merkle_cbt crate used by CKB.
 fn merkle_root(leaves: &[[u8; 32]]) -> [u8; 32] {
     if leaves.is_empty() {
         return [0u8; 32];
     }
-    let mut nodes = leaves.to_vec();
-    while nodes.len() > 1 {
-        if nodes.len() % 2 == 1 {
-            nodes.push(nodes[nodes.len() - 1]);
-        }
-        let mut next = Vec::with_capacity(nodes.len() / 2);
-        for i in (0..nodes.len()).step_by(2) {
-            let mut data = [0u8; 64];
-            data[..32].copy_from_slice(&nodes[i]);
-            data[32..].copy_from_slice(&nodes[i + 1]);
-            next.push(blake2b_256(&data));
-        }
-        nodes = next;
+
+    let mut queue: VecDeque<[u8; 32]> = VecDeque::with_capacity((leaves.len() + 1) >> 1);
+
+    let mut iter = leaves.rchunks_exact(2);
+    while let Some([leaf1, leaf2]) = iter.next() {
+        queue.push_back(merge(leaf1, leaf2));
     }
-    nodes[0]
+    if let [leaf] = iter.remainder() {
+        queue.push_front(*leaf);
+    }
+
+    while queue.len() > 1 {
+        let right = queue.pop_front().unwrap();
+        let left = queue.pop_front().unwrap();
+        queue.push_back(merge(&left, &right));
+    }
+
+    queue.pop_front().unwrap()
 }
 
 fn byte32_to_arr(b: &blockchain::Byte32) -> [u8; 32] {
@@ -78,6 +90,48 @@ fn calc_transactions_root(block: &blockchain::Block) -> [u8; 32] {
 
 pub fn compute_header_hash(header: &blockchain::Header) -> [u8; 32] {
     blake2b_256(header.as_slice())
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct BlockStats {
+    pub block_count: usize,
+    pub transaction_count: usize,
+    pub lock_scripts: usize,
+    pub type_scripts: usize,
+    pub cell_deps: usize,
+}
+
+pub fn collect_blocks_stats(blocks: &BlockVec) -> BlockStats {
+    let block_count = blocks.len();
+    let mut transaction_count = 0;
+    let mut lock_scripts = 0;
+    let mut type_scripts = 0;
+    let mut cell_deps = 0;
+
+    for i in 0..blocks.len() {
+        let block = blocks.get(i).expect("should exist");
+        let reader = block.as_reader();
+
+        for tx in reader.transactions().iter() {
+            transaction_count += 1;
+            cell_deps += tx.raw().cell_deps().len();
+
+            for output in tx.raw().outputs().iter() {
+                lock_scripts += 1;
+                if output.type_().is_some() {
+                    type_scripts += 1;
+                }
+            }
+        }
+    }
+
+    BlockStats {
+        block_count,
+        transaction_count,
+        lock_scripts,
+        type_scripts,
+        cell_deps,
+    }
 }
 
 pub fn verify_block_integrity(blocks: &BlockVec) -> Result<(), Error> {

@@ -35,9 +35,13 @@ async fn main() {
         let (mut public_values, report) = client.execute(ELF, stdin).await.unwrap();
         let start_hash: [u8; 32] = public_values.read();
         let end_hash: [u8; 32] = public_values.read();
+        let block_count: usize = public_values.read();
+        let transaction_count: usize = public_values.read();
 
         println!("start block hash: 0x{}", hex::encode(start_hash));
         println!("end block hash:   0x{}", hex::encode(end_hash));
+        println!("block count:       {}", block_count);
+        println!("transaction count: {}", transaction_count);
 
         println!(
             "executed program with {:.0} K instructions",
@@ -50,9 +54,13 @@ async fn main() {
 
         let start_hash: [u8; 32] = proof.public_values.read();
         let end_hash: [u8; 32] = proof.public_values.read();
+        let block_count: usize = proof.public_values.read();
+        let transaction_count: usize = proof.public_values.read();
 
         println!("start block hash: 0x{}", hex::encode(start_hash));
         println!("end block hash:   0x{}", hex::encode(end_hash));
+        println!("block count:       {}", block_count);
+        println!("transaction count: {}", transaction_count);
 
         client
             .verify(&proof, pk.verifying_key(), None)

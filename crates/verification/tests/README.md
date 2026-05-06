@@ -9,7 +9,7 @@ Fetched using the `block-dumper` tool:
 ```sh
 cargo run -p block-dumper -- \
   --start-block-hash 0x1c3e9243aa93404c5f34766b3ad9d921a6e1c7ae8c5a091b09ad5a0c140e8cd5 \
-  --count 5 \
+  --count 500 \
   --out crates/verification/tests/blocks.bin
 ```
 
