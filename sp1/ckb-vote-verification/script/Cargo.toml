@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 hex = "0.4.3"
-sp1-sdk = { workspace = true }
+sp1-sdk = { workspace = true, features = ["profiling"] }
 tokio = { workspace = true }
 tracing = { workspace = true }
 

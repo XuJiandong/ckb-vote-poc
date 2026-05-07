@@ -1,7 +1,7 @@
 
 
 sp1-run:
-	cd sp1/ckb-vote-verification/script && RUST_LOG=info cargo run --release -- --execute
+	cd sp1/ckb-vote-verification/script && cargo run --release -- --execute
 
 fmt:
 	cargo fmt

@@ -17,6 +17,7 @@ pub enum Error {
 }
 
 fn blake2b_256(data: &[u8]) -> [u8; 32] {
+    println!("cycle-tracker-report-start: blake2b");
     let core = Blake2bVarCore::new_with_params(&[], CKB_HASH_PERSONALIZATION, 0, 32);
     let mut wrapper = CoreWrapper::<Blake2bVarCore>::from_core(core);
     Update::update(&mut wrapper, data);
@@ -25,6 +26,7 @@ fn blake2b_256(data: &[u8]) -> [u8; 32] {
     core.finalize_variable_core(&mut buffer, &mut full_res);
     let mut result = [0u8; 32];
     result.copy_from_slice(&full_res[..32]);
+    println!("cycle-tracker-report-end: blake2b");
     result
 }
 

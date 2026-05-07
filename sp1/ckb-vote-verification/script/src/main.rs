@@ -43,9 +43,14 @@ async fn main() {
         println!("block count:       {}", block_count);
         println!("transaction count: {}", transaction_count);
 
+        let blake2b_cycles = report.cycle_tracker.get("blake2b").unwrap();
         println!(
-            "executed program with {:.0} K instructions",
-            report.total_instruction_count() as f64 / 1000.0
+            "blake2b with {:.0} M instructions ",
+            *blake2b_cycles as f64 / 1000.0 / 1000.0
+        );
+        println!(
+            "executed program with {:.0} M instructions",
+            report.total_instruction_count() as f64 / 1000.0 / 1000.0
         );
     } else {
         let pk = client.setup(ELF).await.unwrap();
