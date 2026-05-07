@@ -58,6 +58,9 @@ cd sp1/ckb-vote-verification/script && samply load trace.json
 
 Open the Firefox Profiler URL it prints. The "time" axis in the profiler is actually cycle count — fewer cycles in a call frame is better.
 
+### Cycle Tracking
+Use [this](https://docs.succinct.xyz/docs/sp1/optimizing-programs/cycle-tracking)
+
 ## Development workflow
 
 After making changes, run the following in order:
