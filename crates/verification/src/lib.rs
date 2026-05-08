@@ -104,6 +104,7 @@ pub struct BlockStats {
 }
 
 pub fn collect_blocks_stats(blocks: &BlockVec) -> BlockStats {
+    println!("cycle-tracker-report-start: block-stats");
     let block_count = blocks.len();
     let mut transaction_count = 0;
     let mut lock_scripts = 0;
@@ -126,7 +127,7 @@ pub fn collect_blocks_stats(blocks: &BlockVec) -> BlockStats {
             }
         }
     }
-
+    println!("cycle-tracker-report-end: block-stats");
     BlockStats {
         block_count,
         transaction_count,
@@ -141,6 +142,7 @@ pub fn verify_block_integrity(blocks: &BlockVec) -> Result<(), Error> {
         return Err(Error::EmptyBlocks);
     }
 
+    println!("cycle-tracker-report-start: block");
     for i in 1..blocks.len() {
         let prev_block = blocks.get(i - 1).expect("should exist");
         let current_block = blocks.get(i).expect("should exist");
@@ -150,7 +152,9 @@ pub fn verify_block_integrity(blocks: &BlockVec) -> Result<(), Error> {
             return Err(Error::ParentHashMismatch { block_index: i });
         }
     }
+    println!("cycle-tracker-report-end: block");
 
+    println!("cycle-tracker-report-start: transaction_root");
     for i in 0..blocks.len() {
         let block = blocks.get(i).expect("should exist");
         let expected_root = byte32_to_arr(&block.header().raw().transactions_root());
@@ -159,6 +163,7 @@ pub fn verify_block_integrity(blocks: &BlockVec) -> Result<(), Error> {
             return Err(Error::TransactionsRootMismatch { block_index: i });
         }
     }
+    println!("cycle-tracker-report-end: transaction_root");
 
     Ok(())
 }

@@ -48,6 +48,23 @@ async fn main() {
             "blake2b with {:.0} M instructions ",
             *blake2b_cycles as f64 / 1000.0 / 1000.0
         );
+        let block_cycles = report.cycle_tracker.get("block").unwrap();
+        println!(
+            "block with {:.0} M instructions ",
+            *block_cycles as f64 / 1000.0 / 1000.0
+        );
+
+        let transaction_root_cycles = report.cycle_tracker.get("transaction_root").unwrap();
+        println!(
+            "transaction_root with {:.0} M instructions ",
+            *transaction_root_cycles as f64 / 1000.0 / 1000.0
+        );
+        let block_stats_cycles = report.cycle_tracker.get("block-stats").unwrap();
+        println!(
+            "block-stats with {:.0} M instructions ",
+            *block_stats_cycles as f64 / 1000.0 / 1000.0
+        );
+
         println!(
             "executed program with {:.0} M instructions",
             report.total_instruction_count() as f64 / 1000.0 / 1000.0

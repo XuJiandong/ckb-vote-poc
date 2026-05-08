@@ -170,6 +170,25 @@ On the on-chain side, the proposal type script verifies the SP1 zkVM proof as fo
 
 Note: the start and end block hashes are referenced via `header_dep`. If either hash is invalid, the reference will fail and the transaction cannot be constructed.
 
+## Benchmark and Optimization
+
+We benchmarked the solution against 500 mainnet blocks. The total cost is approximately 61M cycles, broken down into two categories:
+
+1. `verify_transaction_root`: The most expensive step. It computes all transaction hashes, builds a Merkle tree, and then derives the transaction root — costing about 55M cycles.
+2. Other checks (block header hash verification, cell traversal, etc.): about 6M cycles.
+
+At this rate, processing one day's worth of blocks (assuming one block every 10 seconds) would cost roughly 1000M cycles, which is practically infeasible.
+
+### Optimized approach: count "YES" votes only
+
+An alternative is to only count "YES" votes and disallow "NO" votes. Voting passes once the "YES" count exceeds a threshold. This allows skipping `verify_transaction_root` for blocks that contain no vote data. Since attackers cannot hide specific vote cells to manipulate the outcome, a valid proof can always be constructed by including sufficient vote cells up to the threshold — significantly reducing proof generation time.
+
+As a rough estimate, assuming 50 blocks per day contain vote cells, the guest program cost drops to about 103M cycles — a 90% reduction.
+
+```
+5.5M (transaction_root) + 6/500 * 3600*24/10 (others) = 103M (cycles)
+```
+
 ## Diagrams
 
 The following diagram shows the static structure of the three core cell types and how they interact through the zkVM verifying process:
