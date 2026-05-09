@@ -1,6 +1,6 @@
 use sp1_sdk::{
-    include_elf, network::NetworkMode, utils, ProveRequest, Prover, ProverClient, ProvingKey,
-    SP1Stdin,
+    ProveRequest, Prover, ProverClient, ProvingKey, SP1Stdin, include_elf, network::NetworkMode,
+    utils,
 };
 
 const ELF: sp1_sdk::Elf = include_elf!("ckb-vote-verification-program");

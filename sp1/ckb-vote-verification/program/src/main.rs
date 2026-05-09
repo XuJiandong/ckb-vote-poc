@@ -2,12 +2,13 @@
 sp1_zkvm::entrypoint!(main);
 
 use ckb_vote_types::molecules::types::BlockVec;
+use ckb_vote_types::molecules::verify_block_vec;
 use molecule::prelude::Entity;
 
 pub fn main() {
     let block_data = sp1_zkvm::io::read_vec();
-
-    let blocks = BlockVec::from_slice(&block_data).expect("failed to parse block data");
+    verify_block_vec(&block_data, false).expect("failed to verify BlockVec in molecule format");
+    let blocks = BlockVec::new_unchecked(block_data.into());
 
     ckb_vote_verification::verify_block_integrity(&blocks)
         .expect("block integrity verification failed");

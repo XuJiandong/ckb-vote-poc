@@ -84,9 +84,13 @@ fn calc_transactions_root(block: &blockchain::Block) -> [u8; 32] {
     let reader = block.as_reader();
     let txs = reader.transactions();
     let tx_hashes: Vec<[u8; 32]> = txs.iter().map(|tx| tx_hash(&tx)).collect();
-    let witness_hashes: Vec<[u8; 32]> = txs.iter().map(|tx| witness_hash(&tx)).collect();
     let raw_root = merkle_root(&tx_hashes);
+
+    println!("cycle-tracker-report-start: witness-hash");
+    let witness_hashes: Vec<[u8; 32]> = txs.iter().map(|tx| witness_hash(&tx)).collect();
     let witness_root = merkle_root(&witness_hashes);
+    println!("cycle-tracker-report-end: witness-hash");
+
     merkle_root(&[raw_root, witness_root])
 }
 

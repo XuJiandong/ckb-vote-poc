@@ -65,13 +65,15 @@ async fn main() {
             *block_stats_cycles as f64 / 1000.0 / 1000.0
         );
 
+        let witness_hash_cycles = report.cycle_tracker.get("witness-hash").unwrap();
+        println!(
+            "witness-hash with {:.0} M instructions ",
+            *witness_hash_cycles as f64 / 1000.0 / 1000.0
+        );
         println!(
             "executed program with {:.0} M instructions",
             report.total_instruction_count() as f64 / 1000.0 / 1000.0
         );
-        if let Some(gas) = report.gas() {
-            println!("gas: {:.0} M", gas as f64 / 1000.0 / 1000.0);
-        }
     } else {
         let pk = client.setup(ELF).await.unwrap();
 
