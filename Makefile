@@ -6,3 +6,6 @@ sp1-run:
 fmt:
 	cargo fmt
 	cd sp1/ckb-vote-verification && cargo fmt
+
+prove-via-network:
+	cd sp1/ckb-vote-verification/script && RUST_LOG=info cargo run --release --bin prove-via-network

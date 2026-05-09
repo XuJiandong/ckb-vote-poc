@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 hex = "0.4.3"
-sp1-sdk = { workspace = true, features = ["profiling"] }
+sp1-sdk = { workspace = true, features = ["profiling", "network"] }
 tokio = { workspace = true }
 tracing = { workspace = true }
 
@@ -18,4 +18,8 @@ sp1-build = { workspace = true }
 [[bin]]
 name = "execute"
 path = "src/main.rs"
+
+[[bin]]
+name = "prove-via-network"
+path = "src/prove-via-network.rs"
 

@@ -69,6 +69,9 @@ async fn main() {
             "executed program with {:.0} M instructions",
             report.total_instruction_count() as f64 / 1000.0 / 1000.0
         );
+        if let Some(gas) = report.gas() {
+            println!("gas: {:.0} M", gas as f64 / 1000.0 / 1000.0);
+        }
     } else {
         let pk = client.setup(ELF).await.unwrap();
 
