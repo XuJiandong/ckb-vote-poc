@@ -3,6 +3,9 @@
 sp1-run:
 	cd sp1/ckb-vote-verification/script && cargo run --release -- --execute
 
+sp1-profiling:
+	cd sp1/ckb-vote-verification/script && cargo run --release --features profiling -- --execute
+
 fmt:
 	cargo fmt
 	cd sp1/ckb-vote-verification && cargo fmt

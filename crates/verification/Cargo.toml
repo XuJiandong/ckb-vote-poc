@@ -3,6 +3,9 @@ name = "ckb-vote-verification"
 version.workspace = true
 edition.workspace = true
 
+[features]
+profiling = []
+
 [dependencies]
 ckb-vote-types = { path = "../types" }
 blake2 = "0.10"

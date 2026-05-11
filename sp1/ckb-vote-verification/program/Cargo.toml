@@ -4,6 +4,9 @@ version.workspace = true
 edition.workspace = true
 publish = false
 
+[features]
+profiling = ["ckb-vote-verification/profiling"]
+
 [dependencies]
 sp1-zkvm = { workspace = true }
 ckb-vote-verification = { path = "../../../crates/verification" }

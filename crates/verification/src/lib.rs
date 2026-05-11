@@ -20,6 +20,7 @@ pub enum Error {
 }
 
 fn blake2b_256(data: &[u8]) -> [u8; 32] {
+    #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-start: blake2b");
     let core = Blake2bVarCore::new_with_params(&[], CKB_HASH_PERSONALIZATION, 0, 32);
     let mut wrapper = CoreWrapper::<Blake2bVarCore>::from_core(core);
@@ -29,6 +30,7 @@ fn blake2b_256(data: &[u8]) -> [u8; 32] {
     core.finalize_variable_core(&mut buffer, &mut full_res);
     let mut result = [0u8; 32];
     result.copy_from_slice(&full_res[..32]);
+    #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-end: blake2b");
     result
 }
@@ -108,6 +110,7 @@ pub struct BlockStats {
 }
 
 pub fn collect_blocks_stats(blocks: BlockVecReader<'_>) -> BlockStats {
+    #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-start: block-stats");
     let block_count = blocks.len();
     let mut transaction_count = 0;
@@ -130,6 +133,7 @@ pub fn collect_blocks_stats(blocks: BlockVecReader<'_>) -> BlockStats {
             }
         }
     }
+    #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-end: block-stats");
     BlockStats {
         block_count,
@@ -148,6 +152,7 @@ pub fn verify_block_integrity(
         return Err(Error::EmptyBlocks);
     }
 
+    #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-start: block");
     for i in 1..blocks.len() {
         let prev_block = blocks.get(i - 1).expect("should exist");
@@ -158,18 +163,23 @@ pub fn verify_block_integrity(
             return Err(Error::ParentHashMismatch { block_index: i });
         }
     }
+    #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-end: block");
 
+    #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-start: transaction_root");
     for i in 0..blocks.len() {
         let block = blocks.get(i).expect("should exist");
         let expected_root = byte32_to_arr(block.header().raw().transactions_root());
-        let wr = witness_root.get(i).expect("witness_root index out of bounds");
+        let wr = witness_root
+            .get(i)
+            .expect("witness_root index out of bounds");
         let actual_root = calc_transactions_root(block, wr);
         if expected_root != actual_root {
             return Err(Error::TransactionsRootMismatch { block_index: i });
         }
     }
+    #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-end: transaction_root");
 
     Ok(())

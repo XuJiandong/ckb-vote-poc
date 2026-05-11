@@ -5,10 +5,13 @@ edition.workspace = true
 default-run = "execute"
 publish = false
 
+[features]
+profiling = ["sp1-sdk/profiling", "ckb-vote-verification/profiling"]
+
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 hex = "0.4.3"
-sp1-sdk = { workspace = true, features = ["profiling", "network"] }
+sp1-sdk = { workspace = true, features = ["network"] }
 tokio = { workspace = true }
 tracing = { workspace = true }
 ckb-vote-verification = { path = "../../../crates/verification" }
