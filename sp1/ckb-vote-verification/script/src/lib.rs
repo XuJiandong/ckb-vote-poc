@@ -1,0 +1,1 @@
+pub use ckb_vote_verification::prepare_guest_program_arguments;

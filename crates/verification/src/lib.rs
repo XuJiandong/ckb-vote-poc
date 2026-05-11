@@ -3,8 +3,11 @@ use blake2::digest::Update;
 use blake2::digest::core_api::{CoreWrapper, VariableOutputCore};
 use blake2::digest::generic_array::GenericArray;
 use blake2::digest::typenum::U64;
-use ckb_vote_types::molecules::{blockchain, types::BlockVec};
-use molecule::prelude::{Entity, Reader};
+use ckb_vote_types::molecules::{
+    blockchain,
+    types::{BlockVec, BlockVecReader, GuestProgramArguments},
+};
+use molecule::prelude::{Builder, Entity, Reader};
 use std::collections::VecDeque;
 
 const CKB_HASH_PERSONALIZATION: &[u8] = b"ckb-default-hash";
@@ -38,7 +41,7 @@ fn merge(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
 }
 
 // Complete Binary Merkle Tree (CBMT), matching the merkle_cbt crate used by CKB.
-fn merkle_root(leaves: &[[u8; 32]]) -> [u8; 32] {
+pub fn merkle_root(leaves: &[[u8; 32]]) -> [u8; 32] {
     if leaves.is_empty() {
         return [0u8; 32];
     }
@@ -62,13 +65,13 @@ fn merkle_root(leaves: &[[u8; 32]]) -> [u8; 32] {
     queue.pop_front().unwrap()
 }
 
-fn byte32_to_arr(b: &blockchain::Byte32) -> [u8; 32] {
+fn byte32_to_arr(b: blockchain::Byte32Reader<'_>) -> [u8; 32] {
     let mut arr = [0u8; 32];
     arr.copy_from_slice(b.as_slice());
     arr
 }
 
-fn header_hash(header: &blockchain::Header) -> [u8; 32] {
+fn header_hash(header: blockchain::HeaderReader<'_>) -> [u8; 32] {
     blake2b_256(header.as_slice())
 }
 
@@ -76,25 +79,22 @@ fn tx_hash(tx: &blockchain::TransactionReader<'_>) -> [u8; 32] {
     blake2b_256(tx.raw().as_slice())
 }
 
-fn witness_hash(tx: &blockchain::TransactionReader<'_>) -> [u8; 32] {
+pub fn witness_hash(tx: &blockchain::TransactionReader<'_>) -> [u8; 32] {
     blake2b_256(tx.as_slice())
 }
 
-fn calc_transactions_root(block: &blockchain::Block) -> [u8; 32] {
-    let reader = block.as_reader();
-    let txs = reader.transactions();
+fn calc_transactions_root(
+    block: blockchain::BlockReader<'_>,
+    witness_root: blockchain::Byte32Reader<'_>,
+) -> [u8; 32] {
+    let txs = block.transactions();
     let tx_hashes: Vec<[u8; 32]> = txs.iter().map(|tx| tx_hash(&tx)).collect();
     let raw_root = merkle_root(&tx_hashes);
 
-    println!("cycle-tracker-report-start: witness-hash");
-    let witness_hashes: Vec<[u8; 32]> = txs.iter().map(|tx| witness_hash(&tx)).collect();
-    let witness_root = merkle_root(&witness_hashes);
-    println!("cycle-tracker-report-end: witness-hash");
-
-    merkle_root(&[raw_root, witness_root])
+    merkle_root(&[raw_root, byte32_to_arr(witness_root)])
 }
 
-pub fn compute_header_hash(header: &blockchain::Header) -> [u8; 32] {
+pub fn compute_header_hash(header: blockchain::HeaderReader<'_>) -> [u8; 32] {
     blake2b_256(header.as_slice())
 }
 
@@ -107,7 +107,7 @@ pub struct BlockStats {
     pub cell_deps: usize,
 }
 
-pub fn collect_blocks_stats(blocks: &BlockVec) -> BlockStats {
+pub fn collect_blocks_stats(blocks: BlockVecReader<'_>) -> BlockStats {
     println!("cycle-tracker-report-start: block-stats");
     let block_count = blocks.len();
     let mut transaction_count = 0;
@@ -117,9 +117,8 @@ pub fn collect_blocks_stats(blocks: &BlockVec) -> BlockStats {
 
     for i in 0..blocks.len() {
         let block = blocks.get(i).expect("should exist");
-        let reader = block.as_reader();
 
-        for tx in reader.transactions().iter() {
+        for tx in block.transactions().iter() {
             transaction_count += 1;
             cell_deps += tx.raw().cell_deps().len();
 
@@ -141,7 +140,10 @@ pub fn collect_blocks_stats(blocks: &BlockVec) -> BlockStats {
     }
 }
 
-pub fn verify_block_integrity(blocks: &BlockVec) -> Result<(), Error> {
+pub fn verify_block_integrity(
+    blocks: BlockVecReader<'_>,
+    witness_root: blockchain::Byte32VecReader<'_>,
+) -> Result<(), Error> {
     if blocks.is_empty() {
         return Err(Error::EmptyBlocks);
     }
@@ -150,8 +152,8 @@ pub fn verify_block_integrity(blocks: &BlockVec) -> Result<(), Error> {
     for i in 1..blocks.len() {
         let prev_block = blocks.get(i - 1).expect("should exist");
         let current_block = blocks.get(i).expect("should exist");
-        let prev_hash = header_hash(&prev_block.header());
-        let parent_hash = byte32_to_arr(&current_block.header().raw().parent_hash());
+        let prev_hash = header_hash(prev_block.header());
+        let parent_hash = byte32_to_arr(current_block.header().raw().parent_hash());
         if prev_hash != parent_hash {
             return Err(Error::ParentHashMismatch { block_index: i });
         }
@@ -161,8 +163,9 @@ pub fn verify_block_integrity(blocks: &BlockVec) -> Result<(), Error> {
     println!("cycle-tracker-report-start: transaction_root");
     for i in 0..blocks.len() {
         let block = blocks.get(i).expect("should exist");
-        let expected_root = byte32_to_arr(&block.header().raw().transactions_root());
-        let actual_root = calc_transactions_root(&block);
+        let expected_root = byte32_to_arr(block.header().raw().transactions_root());
+        let wr = witness_root.get(i).expect("witness_root index out of bounds");
+        let actual_root = calc_transactions_root(block, wr);
         if expected_root != actual_root {
             return Err(Error::TransactionsRootMismatch { block_index: i });
         }
@@ -170,4 +173,40 @@ pub fn verify_block_integrity(blocks: &BlockVec) -> Result<(), Error> {
     println!("cycle-tracker-report-end: transaction_root");
 
     Ok(())
+}
+
+pub fn prepare_guest_program_arguments(bytes: &[u8]) -> GuestProgramArguments {
+    let blocks = BlockVec::from_compatible_slice(bytes).expect("invalid block data");
+
+    let mut all_witness_root: Vec<blockchain::Byte32> = Vec::new();
+    for i in 0..blocks.len() {
+        let block = blocks.get(i).expect("should exist");
+        let hashes: Vec<[u8; 32]> = block
+            .as_reader()
+            .transactions()
+            .iter()
+            .map(|tx| witness_hash(&tx))
+            .collect();
+        all_witness_root.push(merkle_root(&hashes).into());
+    }
+
+    let witness_root = all_witness_root
+        .into_iter()
+        .fold(blockchain::Byte32Vec::new_builder(), |b, h| b.push(h))
+        .build();
+
+    let blocks_field = blockchain::Bytes::new_builder()
+        .set(
+            blocks
+                .as_slice()
+                .iter()
+                .map(|b| blockchain::Byte::new(*b))
+                .collect(),
+        )
+        .build();
+
+    GuestProgramArguments::new_builder()
+        .blocks(blocks_field)
+        .witness_root(witness_root)
+        .build()
 }

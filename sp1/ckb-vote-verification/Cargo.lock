@@ -1680,8 +1680,11 @@ dependencies = [
 name = "ckb-vote-verification-script"
 version = "0.1.0"
 dependencies = [
+ "ckb-vote-types",
+ "ckb-vote-verification",
  "clap",
  "hex",
+ "molecule",
  "sp1-build",
  "sp1-sdk",
  "tokio",

@@ -1,4 +1,6 @@
+use ckb_vote_verification_script::prepare_guest_program_arguments;
 use clap::Parser;
+use molecule::prelude::Entity;
 use sp1_sdk::{ProveRequest, Prover, ProverClient, ProvingKey, SP1Stdin, include_elf, utils};
 
 const ELF: sp1_sdk::Elf = include_elf!("ckb-vote-verification-program");
@@ -19,19 +21,20 @@ struct Args {
 async fn main() {
     utils::setup_logger();
 
-    let args = Args::parse();
+    let cli = Args::parse();
 
-    if args.execute == args.prove {
+    if cli.execute == cli.prove {
         eprintln!("Error: You must specify either --execute or --prove");
         std::process::exit(1);
     }
 
     let mut stdin = SP1Stdin::new();
-    stdin.write_vec(BLOCK_DATA.to_vec());
+    let guest_args = prepare_guest_program_arguments(BLOCK_DATA);
+    stdin.write_vec(guest_args.as_slice().to_vec());
 
     let client = ProverClient::builder().cpu().build().await;
 
-    if args.execute {
+    if cli.execute {
         let (mut public_values, report) = client.execute(ELF, stdin).await.unwrap();
         let start_hash: [u8; 32] = public_values.read();
         let end_hash: [u8; 32] = public_values.read();
@@ -65,11 +68,6 @@ async fn main() {
             *block_stats_cycles as f64 / 1000.0 / 1000.0
         );
 
-        let witness_hash_cycles = report.cycle_tracker.get("witness-hash").unwrap();
-        println!(
-            "witness-hash with {:.0} M instructions ",
-            *witness_hash_cycles as f64 / 1000.0 / 1000.0
-        );
         println!(
             "executed program with {:.0} M instructions",
             report.total_instruction_count() as f64 / 1000.0 / 1000.0
