@@ -189,6 +189,31 @@ As a rough estimate, assuming 50 blocks per day contain vote cells, the guest pr
 5.5M (transaction_root) + 6/500 * 3600*24/10 (others) = 103M (cycles)
 ```
 
+## SP1 Proof Price
+
+Proofs are generated via the SP1 prover network. The following estimates are based on these assumptions (as of 2026/05):
+
+- PROVE price: 0.277 USDT
+- Price per bPGU: 0.54 PROVE
+- Base fee: 0.3 PROVE
+- CKB block interval: 10s
+
+With 500 blocks, proof generation costs approximately 29M gas (cycles). Scaled to one day: `29 / (500 × 10) × 3600 × 24 ≈ 500 gas/day`.
+
+Using the SP1 pricing formula:
+
+```
+total fee = base fee + price per bPGU × gas
+```
+
+| Duration | PROVE  | Cost (USDT) |
+|----------|--------|-------------|
+| 1 day    | 0.57   | 0.16        |
+| 2 days   | 0.84   | 0.23        |
+| 3 days   | 1.11   | 0.31        |
+| 4 days   | 1.38   | 0.38        |
+
+
 ## Diagrams
 
 The following diagram shows the static structure of the three core cell types and how they interact through the zkVM verifying process:
