@@ -1,3 +1,5 @@
+use ckb_vote_verification::prepare_guest_program_arguments;
+use molecule::prelude::Entity;
 use sp1_sdk::{
     ProveRequest, Prover, ProverClient, ProvingKey, SP1Stdin, include_elf, network::NetworkMode,
     utils,
@@ -14,7 +16,8 @@ async fn main() {
     utils::setup_logger();
 
     let mut stdin = SP1Stdin::new();
-    stdin.write_vec(BLOCK_DATA.to_vec());
+    let guest_args = prepare_guest_program_arguments(BLOCK_DATA);
+    stdin.write_vec(guest_args.as_slice().to_vec());
 
     // NETWORK_PRIVATE_KEY env var must be set to your requester account's private key.
     let client = ProverClient::builder()
