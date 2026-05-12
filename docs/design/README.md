@@ -48,23 +48,21 @@ This document focuses on the design and partial implementation of a voting syste
 
 ## Proposal Cell
 
-A proposal cell is the central element of the design. It can only be created by designated individuals or a team — not by arbitrary users(via owner mode). It represents a proposal, and once it appears on-chain, voting begins. Users can cast votes in response to the proposal.
+A proposal cell is the central element of the design. It can be created by anybody. It represents a proposal, and once it appears on-chain, voting begins. Users can cast votes in response to the proposal.
 
 The lock script of a proposal cell is always a success lock script. All access control is delegated to the type script described below.
 
 The type script of a proposal cell is called the proposal type script. Its `args` are defined as:
 
 ```text
-<20-byte blake160 hash of previous TX> <20-byte blake160 hash of owner lock script> <32-bytes SP1 verifying key hash>
+<20-byte blake160 hash of previous TX> <32-bytes SP1 verifying key hash>
 ```
 
 The first 20 bytes ensure uniqueness via the Type ID mechanism (see [Type ID implementation](https://github.com/nervosnetwork/ckb-std/blob/0a16c0ed8a6b4d8194d64420dbe309a0c23fc1b2/src/type_id.rs#L79-L85)).
-Then the following 20 bytes serve to enable the `owner mode` mechanism. To determine if `owner mode` is active, the script scans all lock scripts within the current transaction and checks whether the specified owner lock is also successfully unlocked. If so, the script operates in `owner mode`. Typically, these owner lock scripts are associated with recognized individuals or trusted teams. The owner lock script list should be available publicly.
 The final 32 bytes represent the SP1 verifying key hash, indicating which SP1 guest program should be used for zkVM proof verification.
 
 It must follow these rules:
 
-* Proposal cell can only be created under `owner mode`
 * It must be unique across all type scripts. This can be achieved using Type ID.
 * It is referenced by vote cells via its Type ID.
 * It validates the cell data format, described below.
@@ -72,26 +70,25 @@ It must follow these rules:
 * A proposal cell can only be created or destroyed, not updated. 
 * When a proposal cell is destroyed, a zkVM proof must be provided to demonstrate that the vote passed. Only a successful vote permits destruction. The proof is stored in the corresponding witness. This step is described in a separate section (zkVM Verifying Process) and is the most critical part of the design.
 * When the zkVM proof is verified, there must be an output cell with the `amount` and a lock script matching the `receiver`, as described below. This output represents the funds released when the proposal passes.
-* Destroying a proposal cell via the `owner mode` mechanism bypasses all other rules.
 
 The proposal cell data format includes the following fields:
 
-1. `duration` (N) in blocks: votes are valid only if cast within N consecutive blocks from the proposal's start. Votes outside this range are not counted.
+1. `duration` (N) in blocks: votes are valid only if cast within N consecutive blocks from the proposal's start. Votes outside this range are not counted. 
 2. `vote cell code_hash / hash_type`: specifies the script a vote cell must use. Cells using a different script are not counted as valid votes.
-3. `expired_time`: after this time, the proposal cell can be recycled by the designated individuals or team.
+3. `expired_time`: after this time, the proposal cell can be recycled by original creator.
 4. `description`: a plain-text description of the proposal.
 5. `receiver`: The address that will receive the CKB amount when the proposal passes.
 6. `amount`: The amount of CKB to be received.
 7. `minimal_requirement`: minimum required CKB involved in voting.
 
+Since proposal cells can be created by anyone, the fields `duration`, `vote cell code_hash/hash_type`, `amount`, and `minimal_requirement` should be restricted by the proposal type script.
+
 Other metadata may also be included; only the important fields are listed here.
 
 Design notes and rationale:
 
-* Why can only designated individuals or the team create proposals? They are involved only once — during the creation of the proposal cell. After that, anyone can operate on the related cells, including generating zkVM proofs. Allowing anyone to create proposals would open the system to DDoS attacks.
-* Allowing updates would require revoking old votes, re-voting, and notifying all participants — an impractical workflow. The recommended approach is to abandon the existing proposal and create a new one. The "owner mode" mechanism can be used to destroy it.
-* Only authorized lock scripts may operate in `owner mode` to withdraw funds from the treasury. While other users can participate in the voting system, only designated entities with the authorized lock script are permitted to access or withdraw treasury funds.
-* Third parties may also utilize this voting system. However, they are not permitted to withdraw funds from the treasury.
+* Allowing updates would require revoking old votes, re-voting, and notifying all participants — an impractical workflow. The recommended approach is to abandon the existing proposal and create a new one. The old proposal cell can be recycled after it expires.
+* Third parties may also utilize this voting system.
 
 ## Vote Cell
 
@@ -111,6 +108,8 @@ Design notes and rationale:
 1. The type script is not required to validate the proposal cell in full. It only checks that the proposal cell exists. Full validation is handled by the zkVM verifying process.
 2. Vote cells outside the proposal's `duration` range are not counted as valid votes. This is also enforced in the zkVM verifying process.
 3. Vote cells can be recycled immediately, so they do not lock up users' capacity. Users only pay a small amount of CKB as transaction fees.
+4. A "NO" vote is generally unnecessary — users can simply do nothing. However, it can be used to retract a previous "YES" vote, as any "NO" vote overwrites a prior "YES" from the same voter.
+
 
 ## Treasury Cell
 The treasury cell holds assets by default. When a proposal passes, anyone can generate a zkVM proof to unlock the proposal type script.
@@ -121,15 +120,13 @@ The treasury lock script follows these rules:
 
 1. The proposal cell in the same transaction must have a valid `code_hash` / `hash_type`.
 2. The `args` of the proposal cell must be valid:
-   - The owner lock script hashes are recognized.
    - The verifying key hash matches.
-   These two settings are critical to the voting system. The owner lock script hashes determine who can initiate a proposal, and the verifying key hash defines the shape of the guest program — it must be updated whenever the guest program changes. Allowing these settings to be malformed or overwritten by anyone would be a serious security issue.
+   This setting is critical to the voting system. The verifying key hash defines the shape of the guest program — it must be updated whenever the guest program changes. Allowing this setting to be malformed or overwritten by anyone would be a serious security issue.
 
 
 Design notes and rationale:
 
-1. The owner lock script hashes can be hard-coded in the treasury lock script. The logic is simple and easy to update.
-2. The verifying key hash can also be updated when the guest program changes.
+1. The verifying key hash can be updated when the guest program changes.
 
 
 ## zkVM Verifying Process
@@ -179,16 +176,6 @@ We benchmarked the solution against 500 mainnet blocks. The total cost is approx
 
 At this rate, processing one day's worth of blocks (assuming one block every 10 seconds) would cost roughly 1000M cycles, which is practically infeasible.
 
-### Optimized approach: count "YES" votes only
-
-An alternative is to only count "YES" votes and disallow "NO" votes. Voting passes once the "YES" count exceeds a threshold. This allows skipping `verify_transaction_root` for blocks that contain no vote data. Since attackers cannot hide specific vote cells to manipulate the outcome, a valid proof can always be constructed by including sufficient vote cells up to the threshold — significantly reducing proof generation time.
-
-As a rough estimate, assuming 50 blocks per day contain vote cells, the guest program cost drops to about 103M cycles — a 90% reduction.
-
-```
-5.5M (transaction_root) + 6/500 * 3600*24/10 (others) = 103M (cycles)
-```
-
 ## SP1 Proof Price
 
 Proofs are generated via the SP1 prover network. The following estimates are based on these assumptions (as of 2026/05):
@@ -212,6 +199,11 @@ total fee = base fee + price per bPGU × gas
 | 2 days   | 0.84   | 0.23        |
 | 3 days   | 1.11   | 0.31        |
 | 4 days   | 1.38   | 0.38        |
+| 5 days   | 1.65   | 0.46        |
+| 6 days   | 1.92   | 0.53        |
+| 7 days   | 2.19   | 0.61        |
+
+A sample proof generated by the guest program is available on the prover network: [explorer.succinct.xyz](https://explorer.succinct.xyz/request/0x5af072d61db8aaf613549dd12da80ecc09d0a2fe4c3687a8d816d25fef2ae52b)
 
 
 ## Diagrams
