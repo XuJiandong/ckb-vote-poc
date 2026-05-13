@@ -1,8 +1,4 @@
-use blake2::Blake2bVarCore;
-use blake2::digest::Update;
-use blake2::digest::core_api::{CoreWrapper, VariableOutputCore};
-use blake2::digest::generic_array::GenericArray;
-use blake2::digest::typenum::U64;
+use blake2::{Blake2b256, Digest, digest::CustomizedInit};
 use ckb_vote_types::molecules::{
     blockchain,
     types::{BlockVec, BlockVecReader, GuestProgramArguments},
@@ -22,14 +18,9 @@ pub enum Error {
 fn blake2b_256(data: &[u8]) -> [u8; 32] {
     #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-start: blake2b");
-    let core = Blake2bVarCore::new_with_params(&[], CKB_HASH_PERSONALIZATION, 0, 32);
-    let mut wrapper = CoreWrapper::<Blake2bVarCore>::from_core(core);
-    Update::update(&mut wrapper, data);
-    let mut full_res: GenericArray<u8, U64> = Default::default();
-    let (mut core, mut buffer) = wrapper.decompose();
-    core.finalize_variable_core(&mut buffer, &mut full_res);
-    let mut result = [0u8; 32];
-    result.copy_from_slice(&full_res[..32]);
+    let mut hasher = Blake2b256::new_customized(CKB_HASH_PERSONALIZATION);
+    hasher.update(data);
+    let result = hasher.finalize().into();
     #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-end: blake2b");
     result

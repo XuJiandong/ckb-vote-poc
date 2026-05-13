@@ -8,5 +8,5 @@ profiling = []
 
 [dependencies]
 ckb-vote-types = { path = "../types" }
-blake2 = "0.10"
+blake2 = { git = "https://github.com/RustCrypto/hashes.git", rev = "12105d3"}
 molecule = "0.9.2"
