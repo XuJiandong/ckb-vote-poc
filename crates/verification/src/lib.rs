@@ -4,7 +4,7 @@ use ckb_vote_types::molecules::{
     types::{BlockVec, BlockVecReader, GuestProgramArguments},
 };
 use molecule::prelude::{Builder, Entity, Reader};
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 
 const CKB_HASH_PERSONALIZATION: &[u8] = b"ckb-default-hash";
 
@@ -109,12 +109,34 @@ pub fn collect_blocks_stats(blocks: BlockVecReader<'_>) -> BlockStats {
     let mut type_scripts = 0;
     let mut cell_deps = 0;
 
+    // mocked code, for benchmark
+    // Forbidden outpoints: tx_hash = 0x00..00XX (XX = 0x00..0xFF), index = 0
+    let forbidden_cell: BTreeSet<[u8; 36]> = (0u8..=255u8)
+        .map(|i| {
+            let mut op = [0u8; 36]; // bytes 0-31: tx_hash, bytes 32-35: index (LE u32)
+            op[31] = i;
+            op
+        })
+        .collect();
+
     for i in 0..blocks.len() {
         let block = blocks.get(i).expect("should exist");
 
         for tx in block.transactions().iter() {
             transaction_count += 1;
             cell_deps += tx.raw().cell_deps().len();
+
+            for input in tx.raw().inputs().iter() {
+                let prev = input.previous_output();
+                let bytes: [u8; 36] = prev
+                    .as_slice()
+                    .try_into()
+                    .expect("OutPoint is always 36 bytes");
+                assert!(
+                    !forbidden_cell.contains(&bytes),
+                    "input references a forbidden cell"
+                );
+            }
 
             for output in tx.raw().outputs().iter() {
                 lock_scripts += 1;
