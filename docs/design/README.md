@@ -169,12 +169,12 @@ Note: the start and end block hashes are referenced via `header_dep`. If either 
 
 ## Benchmark and Optimization
 
-We benchmarked the solution against 500 mainnet blocks. The total cost is approximately 61M cycles, broken down into two categories:
+We benchmarked the solution against 500 mainnet blocks. The total cost is approximately 34M cycles, broken down into two categories:
 
-1. `verify_transaction_root`: The most expensive step. It computes all transaction hashes, builds a Merkle tree, and then derives the transaction root — costing about 55M cycles.
+1. `verify_transaction_root`: The most expensive step. It computes all transaction hashes, builds a Merkle tree, and then derives the transaction root — costing about 28M cycles.
 2. Other checks (block header hash verification, cell traversal, etc.): about 6M cycles.
 
-At this rate, processing one day's worth of blocks (assuming one block every 10 seconds) would cost roughly 1000M cycles, which is practically infeasible.
+At this rate, processing one day's worth of blocks (assuming one block every 10 seconds) would cost roughly 500M cycles.
 
 ## SP1 Proof Price
 
@@ -185,7 +185,7 @@ Proofs are generated via the SP1 prover network. The following estimates are bas
 - Base fee: 0.3 PROVE
 - CKB block interval: 10s
 
-With 500 blocks, proof generation costs approximately 29M gas (cycles). Scaled to one day: `29 / (500 × 10) × 3600 × 24 ≈ 500 gas/day`.
+With 500 blocks, proof generation costs approximately 34M gas (cycles). Scaled to one day: `34 / (500 × 10) × 3600 × 24 ≈ 500 M gas/day`.
 
 Using the SP1 pricing formula:
 
