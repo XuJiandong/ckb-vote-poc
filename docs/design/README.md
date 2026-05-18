@@ -1,7 +1,9 @@
-# Voting Design and implementation with zkVM on CKB-VM
+# Voting Design and implementation with zkVM on CKB-VM(Draft)
 
 This document explains how to use a zkVM to design and implement a voting system on CKB-VM. Any zkVM (SP1, RISC Zero, etc.) can be used;
 here we use SP1 since we have already ported the SP1 verifier to CKB-VM.
+
+**In case of any conflict with the specification document, these specifications take precedence.**
 
 ## Introduction
 
@@ -55,11 +57,11 @@ The lock script of a proposal cell is always a success lock script. All access c
 The type script of a proposal cell is called the proposal type script. Its `args` are defined as:
 
 ```text
-<20-byte blake160 hash of previous TX> <32-bytes SP1 verifying key hash>
+<20-byte blake160 hash of previous TX> <32-bytes SP1 verifying key>
 ```
 
 The first 20 bytes ensure uniqueness via the Type ID mechanism (see [Type ID implementation](https://github.com/nervosnetwork/ckb-std/blob/0a16c0ed8a6b4d8194d64420dbe309a0c23fc1b2/src/type_id.rs#L79-L85)).
-The final 32 bytes represent the SP1 verifying key hash, indicating which SP1 guest program should be used for zkVM proof verification.
+The final 32 bytes represent the SP1 verifying key, indicating which SP1 guest program should be used for zkVM proof verification.
 
 It must follow these rules:
 
@@ -75,11 +77,10 @@ The proposal cell data format includes the following fields:
 
 1. `duration` (N) in blocks: votes are valid only if cast within N consecutive blocks from the proposal's start. Votes outside this range are not counted. 
 2. `vote cell code_hash / hash_type`: specifies the script a vote cell must use. Cells using a different script are not counted as valid votes.
-3. `expired_time`: after this time, the proposal cell can be recycled by original creator.
-4. `description`: a plain-text description of the proposal.
-5. `receiver`: The address that will receive the CKB amount when the proposal passes.
-6. `amount`: The amount of CKB to be received.
-7. `minimal_requirement`: minimum required CKB involved in voting.
+3. `description`: a plain-text description of the proposal.
+4. `receiver`: The address that will receive the CKB amount when the proposal passes.
+5. `amount`: The amount of CKB to be received.
+6. `minimal_requirement`: minimum required CKB involved in voting.
 
 Since proposal cells can be created by anyone, the fields `duration`, `vote cell code_hash/hash_type`, `amount`, and `minimal_requirement` should be restricted by the proposal type script.
 
@@ -87,7 +88,7 @@ Other metadata may also be included; only the important fields are listed here.
 
 Design notes and rationale:
 
-* Allowing updates would require revoking old votes, re-voting, and notifying all participants — an impractical workflow. The recommended approach is to abandon the existing proposal and create a new one. The old proposal cell can be recycled after it expires.
+* Allowing updates would require revoking old votes, re-voting, and notifying all participants — an impractical workflow. The recommended approach is to abandon the existing proposal and create a new one.
 * Third parties may also utilize this voting system.
 
 ## Vote Cell
@@ -100,7 +101,7 @@ The vote cell's type script is specified in the proposal cell's data format. Thi
 
 1. The input cell being consumed must be unlocked by a script. This script represents ownership of a DAO deposit.
 2. `cell_deps` must include a reference to the DAO deposit, which must share the same lock script as above. The DAO deposit amount is used as the vote weight.
-3. `args` must contain the Type ID of the proposal cell. Since each proposal type script is unique, all derived vote type scripts are unique as well.
+3. `args` must contain the blake160 hash of the proposal type script. 
 4. Rules 1–3 apply only when this type script appears in an output cell. When it appears in an input cell, it does nothing — this allows the cell to be recycled.
 
 Design notes and rationale:
@@ -120,13 +121,13 @@ The treasury lock script follows these rules:
 
 1. The proposal cell in the same transaction must have a valid `code_hash` / `hash_type`.
 2. The `args` of the proposal cell must be valid:
-   - The verifying key hash matches.
-   This setting is critical to the voting system. The verifying key hash defines the shape of the guest program — it must be updated whenever the guest program changes. Allowing this setting to be malformed or overwritten by anyone would be a serious security issue.
+   - The verifying key matches.
+   This setting is critical to the voting system. The verifying key defines the shape of the guest program — it must be updated whenever the guest program changes. Allowing this setting to be malformed or overwritten by anyone would be a serious security issue.
 
 
 Design notes and rationale:
 
-1. The verifying key hash can be updated when the guest program changes.
+1. The verifying key can be updated when the guest program changes.
 
 
 ## zkVM Verifying Process
@@ -155,7 +156,7 @@ On the off-chain side, the guest program works as follows:
 
 On the on-chain side, the proposal type script verifies the SP1 zkVM proof as follows:
 
-1. Read the `<32-byte SP1 verifying key hash>` from `args`.
+1. Read the `<32-byte SP1 verifying key>` from `args`.
 2. Read the `proof` from the witness.
 3. Parse the `proof` to extract the public values.
 4. Call the SP1 verifier with the arguments above and verify the proof.
