@@ -27,7 +27,7 @@ The script follows these steps:
 2. The trailing 32 bytes of `args` of proposal type script should match verifying key
 3. Verify the corresponding cell data conforms to the [Proposal](./proposal-type-script.md#cell-data) structure.
 4. Verify there is an output cell carrying exactly `amount` CKB locked to the `receiver` script — this is the funding disbursed when a proposal passes. There must be exactly two output cells: one for the receiver and one change cell locked with the treasury lock script. The total input capacity and total output capacity must differ by no more than a small transaction fee (e.g. < 1 CKB).
-5. Re-validate `duration`, `vote_cell_code_hash` / `vote_cell_hash_type`, `amount`, and `minimal_requirement` against the cell data, even though the proposal type script already checks them.
+5. Re-validate the `duration`, `vote_cell_code_hash` / `vote_cell_hash_type`, `amount`, and `minimal_requirement` in `proposal` field in `PublicValues` against the cell data, even though the proposal type script already checks it.
 
 ## Examples
 
@@ -75,8 +75,8 @@ Outputs:
             code_hash: <secp256k1 code hash>
             hash_type: 0x01
             args: <20-byte blake160 of receiver pubkey>     # must match Proposal.receiver
+        Capacity: <Proposal.amount>
         # capacity must equal Proposal.amount
-
     Change_Cell                                         # exactly one; locked with treasury lock script
         Data: <empty>
         Type: <none>
@@ -84,7 +84,7 @@ Outputs:
             code_hash: <treasury lock script code_hash>
             hash_type: <treasury lock script hash_type>
             args: <empty>
-        # capacity = total_input_capacity - Proposal.amount - tx_fee
+        Capacity: <total_input_capacity - Proposal.amount - tx_fee>
         # tx_fee must be < 1 CKB
 
 Header Deps:
@@ -98,16 +98,22 @@ Witnesses:
         Output Type: SP1ProofWithPublicValues
             proof: <PLONK proof bytes>
             public_values (PublicValues molecule):
-                duration: 8640
-                vote_cell_code_hash: <32-byte hash of vote type script>
-                vote_cell_hash_type: 0x01
-                receiver:
-                    code_hash: <secp256k1 code hash>
-                    hash_type: 0x01
-                    args: <20-byte blake160 of receiver pubkey>
-                amount: 100000000000
-                minimal_requirement: 500000000000
+                proposal:
+                    duration: 8640
+                    vote_cell_code_hash: <32-byte hash of vote type script>
+                    vote_cell_hash_type: 0x01
+                    description: "Fund infrastructure work Q3 2026"
+                    receiver:
+                        code_hash: <secp256k1 code hash>
+                        hash_type: 0x01
+                        args: <20-byte blake160 of receiver pubkey>
+                    amount: 100000000000
+                    minimal_requirement: 500000000000
                 start_block_hash: <32-byte hash>        # must equal header_deps[0]
                 end_block_hash: <32-byte hash>          # must equal header_deps[1]
+                proposal_script:
+                    code_hash: <proposal type script code_hash>
+                    hash_type: <proposal type script hash_type>
+                    args: <20-byte blake160 Type ID> <32-byte SP1 verifying key hash>
                 passed: 0x01                            # 1 = proposal passed
 ```

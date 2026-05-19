@@ -3,8 +3,6 @@
 This document explains how to use a zkVM to design and implement a voting system on CKB-VM. Any zkVM (SP1, RISC Zero, etc.) can be used;
 here we use SP1 since we have already ported the SP1 verifier to CKB-VM.
 
-**In case of any conflict with the specification document, these specifications take precedence.**
-
 ## Introduction
 
 Before diving into the implementation details, let's cover some basic concepts about what a zkVM does and how it works.
@@ -57,7 +55,7 @@ The lock script of a proposal cell is always a success lock script. All access c
 The type script of a proposal cell is called the proposal type script. Its `args` are defined as:
 
 ```text
-<20-byte blake160 hash of previous TX> <32-bytes SP1 verifying key>
+<20-byte blake160 hash of Type ID> <32-bytes SP1 verifying key>
 ```
 
 See details in [Proposal Type Script Specification](../proposal-type-script.md).
