@@ -13,19 +13,36 @@ Since a proposal type script is unique across the entire chain, there is no ambi
 
 
 ## Cell Data
-One byte data: 0 for "NO" and 1 for "YES".
+
+The cell data uses the following molecule structure:
+```
+table Vote {
+    vote: Byte,
+    amount: Uint64,
+    dao_index: Uint16Vec,
+}
+```
+The `vote` field is a single byte: `0` for "NO" and `1` for "YES".
+The `amount` is the total CKB the owner holds in DAO deposits. The `dao_index` contains the indices into `cell_deps` that point to those DAO deposit cells.
+
 
 ## Witness
 This script doesn't read witness.
 
 ## Unlocking process
 
-When a vote cell is created, the action is treated as casting a vote. The script first checks that a proposal cell — identified by the blake160 hash stored in `args` — exists in `cell_deps`. It is not required to validate the proposal cell in full; it only checks that the proposal cell exists. The script then looks for a lock script on the input cells that matches the corresponding output lock script; this lock script represents ownership of the DAO. The script then traverses all `cell_deps` to find cells meeting both of the following conditions:
+1. When a vote cell is created, the action is treated as casting a vote. The script first checks that a proposal cell — identified by the blake160 hash stored in `args` — exists in `cell_deps`. Full validation of the proposal cell is not required; it only needs to confirm its presence.
 
-1. Its lock script matches the DAO owner.
-2. Its type script is the Nervos DAO, as described [here](https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0024-ckb-genesis-script-list/0024-ckb-genesis-script-list.md#nervos-dao).
+2. The script then looks for a lock script on the input cells that matches the corresponding output lock script. This lock script represents ownership of the DAO.
 
-If no such `cell_dep` exists, the script fails. Tallying the total CKB voted is the guest program's responsibility — the vote type script does not perform this count.
+3. The script traverses all `cell_deps` to find cells that satisfy all of the following conditions:
+
+- Its lock script matches the DAO owner.
+- Its type script is the Nervos DAO, as described [here](https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0024-ckb-genesis-script-list/0024-ckb-genesis-script-list.md#nervos-dao).
+- Its index appears in `dao_index` from the cell data.
+- The sum of CKB across all matching DAO deposits equals the `amount` in the cell data.
+
+If no such `cell_dep` exists, the script fails.
 
 
 When a vote cell is consumed, there is no special meaning — it simply recycles the occupied CKB. The cell can be consumed at any time and does not need to wait until voting ends.
@@ -70,7 +87,10 @@ Inputs:
 
 Outputs:
     Vote_Cell
-        Data: 0x01                                      # 1 = YES
+        Data: <molecule-encoded Vote>
+            vote: 0x01                                  # 1 = YES
+            amount: <voter's total DAO balance in shannons>
+            dao_index: [1]                              # index 1 in cell_deps (DAO_Deposit_Cell)
         Type:
             code_hash: <vote type script code hash>
             hash_type: <vote type script hash type>
@@ -99,7 +119,10 @@ Witnesses:
 ```yaml
 Inputs:
     Vote_Cell                                           # the previously cast vote
-        Data: 0x01                                      # 1 = YES (original vote content)
+        Data: <molecule-encoded Vote>
+            vote: 0x01                                  # 1 = YES (original vote content)
+            amount: <voter's total DAO balance in shannons>
+            dao_index: [1]
         Type:
             code_hash: <vote type script code hash>
             hash_type: <vote type script hash type>

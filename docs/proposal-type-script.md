@@ -115,10 +115,12 @@ The verifying key in `args` is a hash of the guest program. The guest program pe
 - It verifies that `parent_hash` matches between adjacent blocks.
 - It verifies that the `transactions_root` field in each block matches the expected value according to the [block structure RFC](https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0027-block-structure/0027-block-structure.md). Additional verification steps can be included as needed, but are not detailed here.
 - It parses all blocks in molecule format, reads all transactions, and iterates over all cells.
-- If a cell matches the vote cell type script, it verifies that the corresponding `cell_deps` contain a DAO deposit with the correct lock script. If valid, the vote is counted and stored in a `Map`. Later votes from the same voter overwrite earlier ones, which can be used to retract an existing vote.
-- Each DAO deposit out point is added to a `Set`. Subsequent input transactions may not reference any out point already in this `Set`, preventing double-counting of DAO deposits.
+
+- If a cell matches the vote type script, the verifier checks that its cell data contains a valid `table Vote` (see [Vote Type Script Specification](./vote-type-script.md#cell-data)). The `Vote.amount` field is recorded in a `Map` keyed by the voter's lock script hash. A later vote from the same voter overwrites the earlier one, effectively allowing vote retraction.
+- Each `table Vote` carries a `dao_index`. The corresponding DAO deposit out point from `cell_deps` is added to a `Set`. If a subsequent transaction references an out point already in this `Set`, it indicates the same CKB will be counted twice; all related votes in the `Map` are then removed, preventing double-counting of DAO deposits.
+
 - After the final block is processed, the voting results are aggregated into a `Map`. The key is the lock script hash identifying each voter, and the value is the total CKB amount they hold.
-- The passing rule is not yet finalized, but a simple example would be: `sum("YES") > sum("NO") && sum("YES") > minimal_requirement`.
+- The passing rule is not yet finalized, but a simple example would be: `sum("YES") > sum("NO") && sum("YES") + sum("NO") > minimal_requirement`.
 - Finally, the guest program commits the public values(See `table PublicValues`) and outputs the SP1 proof. These public values are crucial, as the on-chain verifier(see above) must independently validate each of them to ensure the integrity of the zkVM proof.
 
 ## Other Notes

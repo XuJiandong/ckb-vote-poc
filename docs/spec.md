@@ -7,5 +7,3 @@ Based on the [draft design document](./design/README.md), there are three script
 - [Treasure lock script](./treasure-lock-script.md)
 
 **In case of any conflict with the draft design document, these specifications take precedence.**
-
-![zkVM Voting System](./design/zkvm-voting.png)
