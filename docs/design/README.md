@@ -1,4 +1,4 @@
-# Voting Design and implementation with zkVM on CKB-VM
+# Voting Design and implementation with zkVM on CKB-VM(Draft)
 
 This document explains how to use a zkVM to design and implement a voting system on CKB-VM. Any zkVM (SP1, RISC Zero, etc.) can be used;
 here we use SP1 since we have already ported the SP1 verifier to CKB-VM.
@@ -46,6 +46,21 @@ write a utility that reads, parses, and verifies.
 
 This document focuses on the design and partial implementation of a voting system using zkVM on CKB-VM. It is not a full specification and does not cover every implementation detail.
 
+## Features
+
+This design has the following features:
+
+1. **Decentralized**: Once the on-chain scripts are deployed, the system requires no centralized team or operator. Anyone can create a proposal and vote. When a vote passes, funds can be withdrawn from the treasury.
+2. **Double-vote resistant**: Some vote designs are vulnerable to an attack where a voter votes, withdraws their DAO deposit, redeposits to a second address, and votes again. This design prevents that.
+3. **Flexible vote rules**: Because vote counting is implemented in a zkVM, all relevant data is available at counting time. This makes it straightforward to implement complex vote rules — something that is difficult under a pure UTXO model, where a script cannot observe the full picture of all data.
+4. **Reusable**: The proposal and vote scripts are not treasury-specific and can be integrated into third-party systems.
+5. **Stake-weighted voting**: Voting power is proportional to CKB held in Nervos DAO deposits, not one-address-one-vote. This aligns influence with economic stake in the network.
+6. **Vote retractability**: Voters can change or retract their vote at any time during the voting window. 
+7. **Low participation cost**: Casting a vote only requires a small amount of CKB to occupy the vote cell. Voters can reclaim the vote cell CKB at any time — they do not have to wait until the voting window closes.
+8. **Permissionless settlement**: Once a proposal passes, anyone can generate and submit the SP1 proof to trigger fund disbursement. There is no designated operator or trusted party required to finalize the outcome.
+9. **Cryptographically verifiable vote counting**: The zkVM proof guarantees that votes are counted correctly and honestly across the specified block range. 
+
+
 ## Proposal Cell
 
 A proposal cell is the central element of the design. It can be created by anybody. It represents a proposal, and once it appears on-chain, voting begins. Users can cast votes in response to the proposal.
@@ -55,117 +70,32 @@ The lock script of a proposal cell is always a success lock script. All access c
 The type script of a proposal cell is called the proposal type script. Its `args` are defined as:
 
 ```text
-<20-byte blake160 hash of previous TX> <32-bytes SP1 verifying key hash>
+<20-byte blake160 hash of Type ID> <32-bytes SP1 verifying key>
 ```
 
-The first 20 bytes ensure uniqueness via the Type ID mechanism (see [Type ID implementation](https://github.com/nervosnetwork/ckb-std/blob/0a16c0ed8a6b4d8194d64420dbe309a0c23fc1b2/src/type_id.rs#L79-L85)).
-The final 32 bytes represent the SP1 verifying key hash, indicating which SP1 guest program should be used for zkVM proof verification.
-
-It must follow these rules:
-
-* It must be unique across all type scripts. This can be achieved using Type ID.
-* It is referenced by vote cells via its Type ID.
-* It validates the cell data format, described below.
-* If a proposal cell remains on-chain without being destroyed for a long time, it indicates the proposal did not pass. It can be recycled after a specific expiration time.
-* A proposal cell can only be created or destroyed, not updated. 
-* When a proposal cell is destroyed, a zkVM proof must be provided to demonstrate that the vote passed. Only a successful vote permits destruction. The proof is stored in the corresponding witness. This step is described in a separate section (zkVM Verifying Process) and is the most critical part of the design.
-* When the zkVM proof is verified, there must be an output cell with the `amount` and a lock script matching the `receiver`, as described below. This output represents the funds released when the proposal passes.
-
-The proposal cell data format includes the following fields:
-
-1. `duration` (N) in blocks: votes are valid only if cast within N consecutive blocks from the proposal's start. Votes outside this range are not counted. 
-2. `vote cell code_hash / hash_type`: specifies the script a vote cell must use. Cells using a different script are not counted as valid votes.
-3. `expired_time`: after this time, the proposal cell can be recycled by original creator.
-4. `description`: a plain-text description of the proposal.
-5. `receiver`: The address that will receive the CKB amount when the proposal passes.
-6. `amount`: The amount of CKB to be received.
-7. `minimal_requirement`: minimum required CKB involved in voting.
-
-Since proposal cells can be created by anyone, the fields `duration`, `vote cell code_hash/hash_type`, `amount`, and `minimal_requirement` should be restricted by the proposal type script.
-
-Other metadata may also be included; only the important fields are listed here.
-
-Design notes and rationale:
-
-* Allowing updates would require revoking old votes, re-voting, and notifying all participants — an impractical workflow. The recommended approach is to abandon the existing proposal and create a new one. The old proposal cell can be recycled after it expires.
-* Third parties may also utilize this voting system.
+See details in [Proposal Type Script Specification](../proposal-type-script.md).
 
 ## Vote Cell
 
 Once the proposal cell is on-chain, users can cast their votes by creating vote cells. Each vote cell's data contains the vote result — typically a simple yes or no.
 
-The vote cell's lock script can be anything, as users may recycle these cells immediately after voting. In practice, it is recommended to use the same lock script as the input cell.
+The vote cell's lock script can be anything, as users may recycle these cells immediately after voting. 
 
-The vote cell's type script is specified in the proposal cell's data format. This vote type script must follow these rules:
-
-1. The input cell being consumed must be unlocked by a script. This script represents ownership of a DAO deposit.
-2. `cell_deps` must include a reference to the DAO deposit, which must share the same lock script as above. The DAO deposit amount is used as the vote weight.
-3. `args` must contain the Type ID of the proposal cell. Since each proposal type script is unique, all derived vote type scripts are unique as well.
-4. Rules 1–3 apply only when this type script appears in an output cell. When it appears in an input cell, it does nothing — this allows the cell to be recycled.
-
-Design notes and rationale:
-
-1. The type script is not required to validate the proposal cell in full. It only checks that the proposal cell exists. Full validation is handled by the zkVM verifying process.
-2. Vote cells outside the proposal's `duration` range are not counted as valid votes. This is also enforced in the zkVM verifying process.
-3. Vote cells can be recycled immediately, so they do not lock up users' capacity. Users only pay a small amount of CKB as transaction fees.
-4. A "NO" vote is generally unnecessary — users can simply do nothing. However, it can be used to retract a previous "YES" vote, as any "NO" vote overwrites a prior "YES" from the same voter.
-
+See details in [Vote Type Script Specification](../vote-type-script.md).
 
 ## Treasury Cell
 The treasury cell holds assets by default. When a proposal passes, anyone can generate a zkVM proof to unlock the proposal type script.
 The treasury cell is locked by a special treasury lock script, which can be unlocked when the proposal type script in the same transaction is also unlocked.
 The transaction includes treasury cells and a proposal cell, with an output cell using the `receiver` as the lock script — effectively sending funds to the receiver.
 
-The treasury lock script follows these rules:
+The treasury lock script has the following hard-coded or configured parameters:
 
-1. The proposal cell in the same transaction must have a valid `code_hash` / `hash_type`.
-2. The `args` of the proposal cell must be valid:
-   - The verifying key hash matches.
-   This setting is critical to the voting system. The verifying key hash defines the shape of the guest program — it must be updated whenever the guest program changes. Allowing this setting to be malformed or overwritten by anyone would be a serious security issue.
+- proposal type script `code_hash` / `hash_type`
+- verifying key of the guest program
 
+These parameters are critical to the voting system. The verifying key is tied to the guest program binary — it must be updated whenever the guest program changes. Allowing these values to be malformed or overwritten would be a serious security issue.
 
-Design notes and rationale:
-
-1. The verifying key hash can be updated when the guest program changes.
-
-
-## zkVM Verifying Process
-
-This is the most critical part of the design. It consists of two sides: off-chain and on-chain.
-The off-chain side generates the SP1 proof using block data as input. The on-chain side verifies the proof against the real block data.
-
-On the off-chain side, the guest program works as follows:
-
-- The guest program receives, as input arguments, a sequence of block data beginning with the block containing the proposal cell. This sequence consists of exactly `duration + 1` consecutive blocks.
-- It also receives a collection of relevant transactions associated with valid DAO deposits, organized in a map structure, as additional input arguments.
-- The guest program takes last argument as the proposal type script along with its corresponding cell data.
-- It reads the proposal cell from the first block and retrieves the vote cell type script.
-- It verifies that `parent_hash` matches between adjacent blocks.
-- It verifies that the `transactions_root` field in each block matches the expected value according to the [block structure RFC](https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0027-block-structure/0027-block-structure.md). Additional verification steps can be included as needed, but are not detailed here.
-- It parses all blocks in molecule format, reads all transactions, and iterates over all cells.
-- If a cell matches the vote cell type script, it verifies that the corresponding `cell_deps` contain a DAO deposit with the correct lock script. If valid, the vote is counted and stored in a `Map`. Later votes overwrite earlier ones from the same voter.
-- After the final block is processed, a `Map` of voting results is produced. The key is the lock script hash identifying each voter, and the value is the amount of CKB they hold.
-- The passing rule is not yet finalized, but a simple example would be: `sum("YES") > sum("NO") && sum("YES") + sum("NO") > minimal_requirement`.
-- Finally, the guest program commits the following public values and outputs the SP1 proof:
-    * Start block hash
-    * End block hash
-    * Proposal type script and its cell data
-    * Whether the proposal passed
-  These public values are crucial, as the on-chain verifier must independently validate each of them to ensure the integrity of the zkVM proof.
-
-On the on-chain side, the proposal type script verifies the SP1 zkVM proof as follows:
-
-1. Read the `<32-byte SP1 verifying key hash>` from `args`.
-2. Read the `proof` from the witness.
-3. Parse the `proof` to extract the public values.
-4. Call the SP1 verifier with the arguments above and verify the proof.
-5. Verify that the public values match the on-chain data:
-   - The start block hash must match the first `header_dep`.
-   - The end block hash must match the second `header_dep`.
-   - The proposal type script and its cell data must match.
-   - The proposal passing flag must match.
-
-Note: the start and end block hashes are referenced via `header_dep`. If either hash is invalid, the reference will fail and the transaction cannot be constructed.
+See details in [Treasure Lock Script Specification](../treasure-lock-script.md).
 
 ## Benchmark and Optimization
 

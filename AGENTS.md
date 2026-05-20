@@ -18,6 +18,10 @@ The SP1 guest program (`program`) depends on `crates/verification` and `crates/t
 - **SP1 Guest Program**: The `sp1/ckb-vote-verification/program` is compiled targeting RISC-V for the zkVM, using a custom toolchain provided by SP1. Do not mix this environment or its build artifacts with other Rust projects.
 - `cargo fmt` uses edition 2024 formatting in both workspaces
 
+## Documents
+
+The design document is at `docs/design/README.md`. The `docs/*.md` files contain specifications.
+
 ## Code generation
 
 `crates/types/build.rs` generates Rust code from `.mol` schema files (in `crates/types/molecules/`) using `molecule-codegen`. The generated code lives in `crates/types/src/molecules/`.
