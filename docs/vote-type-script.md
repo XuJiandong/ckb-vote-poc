@@ -89,7 +89,7 @@ Outputs:
     Vote_Cell
         Data: <molecule-encoded Vote>
             vote: 0x01                                  # 1 = YES
-            amount: <voter's total DAO balance in shannons>
+            amount: <voter's total DAO balance in CKB>
             dao_index: [1]                              # index 1 in cell_deps (DAO_Deposit_Cell)
         Type:
             code_hash: <vote type script code hash>
@@ -121,7 +121,7 @@ Inputs:
     Vote_Cell                                           # the previously cast vote
         Data: <molecule-encoded Vote>
             vote: 0x01                                  # 1 = YES (original vote content)
-            amount: <voter's total DAO balance in shannons>
+            amount: <voter's total DAO balance in CKB>
             dao_index: [1]
         Type:
             code_hash: <vote type script code hash>

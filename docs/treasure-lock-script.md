@@ -46,8 +46,8 @@ Inputs:
                     code_hash: <secp256k1 code hash>
                     hash_type: 0x01                     # type
                     args: <20-byte blake160 of receiver pubkey>
-                amount: 100000000000                    # 1000 CKB in shannons
-                minimal_requirement: 500000000000       # 5000 CKB total vote weight
+                amount: 1000                            # 1000 CKB
+                minimal_requirement: 5000               # 5000 CKB total vote weight
         Type:
             code_hash: <proposal type script code_hash>     # must match configured value
             hash_type: <proposal type script hash_type>     # must match configured value
@@ -76,7 +76,6 @@ Outputs:
             hash_type: 0x01
             args: <20-byte blake160 of receiver pubkey>     # must match Proposal.receiver
         Capacity: <Proposal.amount>
-        # capacity must equal Proposal.amount
     Change_Cell                                         # exactly one; locked with treasury lock script
         Data: <empty>
         Type: <none>
@@ -107,8 +106,8 @@ Witnesses:
                         code_hash: <secp256k1 code hash>
                         hash_type: 0x01
                         args: <20-byte blake160 of receiver pubkey>
-                    amount: 100000000000
-                    minimal_requirement: 500000000000
+                    amount: 1000
+                    minimal_requirement: 5000
                 start_block_hash: <32-byte hash>        # must equal header_deps[0]
                 end_block_hash: <32-byte hash>          # must equal header_deps[1]
                 proposal_script:
