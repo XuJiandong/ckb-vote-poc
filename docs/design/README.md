@@ -46,6 +46,21 @@ write a utility that reads, parses, and verifies.
 
 This document focuses on the design and partial implementation of a voting system using zkVM on CKB-VM. It is not a full specification and does not cover every implementation detail.
 
+## Features
+
+This design has the following features:
+
+1. **Decentralized**: Once the on-chain scripts are deployed, the system requires no centralized team or operator. Anyone can create a proposal and vote. When a vote passes, funds can be withdrawn from the treasury.
+2. **Double-vote resistant**: Some vote designs are vulnerable to an attack where a voter votes, withdraws their DAO deposit, redeposits to a second address, and votes again. This design prevents that.
+3. **Flexible vote rules**: Because vote counting is implemented in a zkVM, all relevant data is available at counting time. This makes it straightforward to implement complex vote rules — something that is difficult under a pure UTXO model, where a script cannot observe the full picture of all data.
+4. **Reusable**: The proposal and vote scripts are not treasury-specific and can be integrated into third-party systems.
+5. **Stake-weighted voting**: Voting power is proportional to CKB held in Nervos DAO deposits, not one-address-one-vote. This aligns influence with economic stake in the network.
+6. **Vote retractability**: Voters can change or retract their vote at any time during the voting window. 
+7. **Low participation cost**: Casting a vote only requires a small amount of CKB to occupy the vote cell. Voters can reclaim the vote cell CKB at any time — they do not have to wait until the voting window closes.
+8. **Permissionless settlement**: Once a proposal passes, anyone can generate and submit the SP1 proof to trigger fund disbursement. There is no designated operator or trusted party required to finalize the outcome.
+9. **Cryptographically verifiable vote counting**: The zkVM proof guarantees that votes are counted correctly and honestly across the specified block range. 
+
+
 ## Proposal Cell
 
 A proposal cell is the central element of the design. It can be created by anybody. It represents a proposal, and once it appears on-chain, voting begins. Users can cast votes in response to the proposal.
