@@ -86,6 +86,8 @@ table PublicValues {
     end_block_hash: Byte32,
     proposal_script: Script,
     passed: Byte,
+    yes_vote: Uint64,
+    no_vote: Uint64,
 }
 ```
 
@@ -109,7 +111,8 @@ The verifying key in `args` is a hash of the guest program. The guest program pe
 - It verifies that the `transactions_root` field in each block matches the expected value according to the [block structure RFC](https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0027-block-structure/0027-block-structure.md). Additional verification steps can be included as needed, but are not detailed here.
 - It parses all blocks in molecule format, reads all transactions, and iterates over all cells.
 
-- If a cell matches the vote type script, the verifier checks that its cell data contains a valid `table Vote` (see [Vote Type Script Specification](./vote-type-script.md#cell-data)). The `Vote.amount` field is recorded in a `Map` keyed by the voter's lock script hash. A later vote from the same voter overwrites the earlier one, effectively allowing vote retraction.
+- If a cell matches the vote type script, the verifier checks that its cell data contains a valid `table Vote` (see [Vote Type Script Specification](./vote-type-script.md#cell-data)). The `Vote.amount` field is recorded in a `Map` keyed by the voter's lock script hash. The `Map` allows no duplicate keys, so inserting an entry for an existing key overwrites the previous value. This means a later vote from the same voter replaces the earlier one, effectively allowing vote retraction.
+
 - Each `table Vote` carries a `dao_index`. The corresponding DAO deposit out point from `cell_deps` is added to a `Set`. If a subsequent transaction references an out point already in this `Set`, it indicates the same CKB would be counted twice; all related votes in the `Map` are then removed, preventing double-counting of DAO deposits.
 
 - After the final block is processed, the voting results are aggregated into a `Map`. The key is the lock script hash identifying each voter, and the value is the total CKB amount they hold.
@@ -123,6 +126,8 @@ The verifying key in `args` is a hash of the guest program. The guest program pe
 * Allowing updates would require revoking old votes, re-voting, and notifying all participants — an impractical workflow. The recommended approach is to abandon the existing proposal and create a new one. 
 
 * Third parties may also utilize this voting system. The can refer existing proposal type script.
+
+* For vote-time eligibility: a DAO deposit created during the voting window can be used to vote. This means a user can buy CKB on the market and deposit it into the DAO to gain voting rights. Since the deposit will be locked for a period, this design encourages broader DAO participation.
 
 
 ## Examples
