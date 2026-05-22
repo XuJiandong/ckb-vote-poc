@@ -61,14 +61,13 @@ pub fn verify_block_shallow(
     slice: &[u8],
     compatible: bool,
 ) -> molecule::error::VerificationResult<()> {
-    use blockchain::ProposalShortIdVecReader;
+    use blockchain::{BlockReader, ProposalShortIdVecReader};
     use molecule::prelude::Reader as _;
     use molecule::verification_error as ve;
-    use types::BlockVecReader;
     let slice_len = slice.len();
     if slice_len < molecule::NUMBER_SIZE {
         return ve!(
-            BlockVecReader,
+            BlockReader,
             HeaderIsBroken,
             molecule::NUMBER_SIZE,
             slice_len
@@ -76,11 +75,11 @@ pub fn verify_block_shallow(
     }
     let total_size = molecule::unpack_number(slice) as usize;
     if slice_len != total_size {
-        return ve!(BlockVecReader, TotalSizeNotMatch, total_size, slice_len);
+        return ve!(BlockReader, TotalSizeNotMatch, total_size, slice_len);
     }
     if slice_len < molecule::NUMBER_SIZE * 2 {
         return ve!(
-            BlockVecReader,
+            BlockReader,
             HeaderIsBroken,
             molecule::NUMBER_SIZE * 2,
             slice_len
@@ -88,14 +87,14 @@ pub fn verify_block_shallow(
     }
     let offset_first = molecule::unpack_number(&slice[molecule::NUMBER_SIZE..]) as usize;
     if offset_first % molecule::NUMBER_SIZE != 0 || offset_first < molecule::NUMBER_SIZE * 2 {
-        return ve!(BlockVecReader, OffsetsNotMatch);
+        return ve!(BlockReader, OffsetsNotMatch);
     }
     if slice_len < offset_first {
-        return ve!(BlockVecReader, HeaderIsBroken, offset_first, slice_len);
+        return ve!(BlockReader, HeaderIsBroken, offset_first, slice_len);
     }
     let field_count = offset_first / molecule::NUMBER_SIZE - 1;
     if field_count < 4 {
-        return ve!(BlockVecReader, FieldCountNotMatch, 4, field_count);
+        return ve!(BlockReader, FieldCountNotMatch, 4, field_count);
     }
     // To support BlockV1
     // else if !compatible && field_count > 4 {
@@ -107,12 +106,12 @@ pub fn verify_block_shallow(
         .collect();
     offsets.push(total_size);
     if offsets.windows(2).any(|i| i[0] > i[1]) {
-        return ve!(BlockVecReader, OffsetsNotMatch);
+        return ve!(BlockReader, OffsetsNotMatch);
     }
     // offsets[0]..offsets[1] — Header struct (fixed 208 bytes)
     let header_slice = &slice[offsets[0]..offsets[1]];
     if header_slice.len() != 208 {
-        return ve!(BlockVecReader, TotalSizeNotMatch, 208, header_slice.len());
+        return ve!(BlockReader, TotalSizeNotMatch, 208, header_slice.len());
     }
     // offsets[1]..offsets[2] — UncleBlockVec (vector; offset layout verified, element contents skipped)
     verify_vector_shallow(&slice[offsets[1]..offsets[2]])?;
@@ -124,14 +123,14 @@ pub fn verify_block_shallow(
 }
 
 pub fn verify_vector_shallow(slice: &[u8]) -> molecule::error::VerificationResult<()> {
+    use blockchain::BlockReader;
     use molecule::prelude::Reader as _;
     use molecule::verification_error as ve;
-    use types::BlockVecReader;
     let slice_len = slice.len();
     // Verify the vector has at least a 4-byte total_size header.
     if slice_len < molecule::NUMBER_SIZE {
         return ve!(
-            BlockVecReader,
+            BlockReader,
             HeaderIsBroken,
             molecule::NUMBER_SIZE,
             slice_len
@@ -140,7 +139,7 @@ pub fn verify_vector_shallow(slice: &[u8]) -> molecule::error::VerificationResul
     // Verify the total_size field matches the actual slice length.
     let total_size = molecule::unpack_number(slice) as usize;
     if slice_len != total_size {
-        return ve!(BlockVecReader, TotalSizeNotMatch, total_size, slice_len);
+        return ve!(BlockReader, TotalSizeNotMatch, total_size, slice_len);
     }
     // Empty vector (just the 4-byte total_size = 4): fully verified.
     if slice_len == molecule::NUMBER_SIZE {
@@ -149,7 +148,7 @@ pub fn verify_vector_shallow(slice: &[u8]) -> molecule::error::VerificationResul
     // Non-empty vector requires at least 8 bytes (total_size + first offset).
     if slice_len < molecule::NUMBER_SIZE * 2 {
         return ve!(
-            BlockVecReader,
+            BlockReader,
             TotalSizeNotMatch,
             molecule::NUMBER_SIZE * 2,
             slice_len
@@ -159,11 +158,11 @@ pub fn verify_vector_shallow(slice: &[u8]) -> molecule::error::VerificationResul
     // header area (at least 8 bytes into the slice).
     let offset_first = molecule::unpack_number(&slice[molecule::NUMBER_SIZE..]) as usize;
     if offset_first % molecule::NUMBER_SIZE != 0 || offset_first < molecule::NUMBER_SIZE * 2 {
-        return ve!(BlockVecReader, OffsetsNotMatch);
+        return ve!(BlockReader, OffsetsNotMatch);
     }
     // Verify the first offset does not exceed total_size.
     if slice_len < offset_first {
-        return ve!(BlockVecReader, HeaderIsBroken, offset_first, slice_len);
+        return ve!(BlockReader, HeaderIsBroken, offset_first, slice_len);
     }
     // Extract all element offsets from the offset area and verify they are
     // monotonically increasing (no overlapping or backward references).
@@ -173,7 +172,7 @@ pub fn verify_vector_shallow(slice: &[u8]) -> molecule::error::VerificationResul
         .collect();
     offsets.push(total_size);
     if offsets.windows(2).any(|i| i[0] > i[1]) {
-        return ve!(BlockVecReader, OffsetsNotMatch);
+        return ve!(BlockReader, OffsetsNotMatch);
     }
     // Element contents are deliberately not verified — iteration via
     // get_unchecked / new_unchecked will still succeed as long as offsets

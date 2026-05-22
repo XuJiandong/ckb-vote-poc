@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 
-use anyhow::Context;
+use anyhow::{Context, ensure};
 use ckb_gen_types::packed;
 use ckb_vote_types::molecules::types::BlockVec;
 use clap::Parser;
@@ -85,6 +85,8 @@ fn fetch_block_by_number(url: &str, block_number: u64) -> anyhow::Result<packed:
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
+    ensure!(args.count > 0, "--count must be greater than 0");
+    ensure!(args.threads > 0, "--threads must be greater than 0");
 
     let first_block = rpc_call(
         &args.url,
@@ -93,10 +95,10 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     let start_number: u64 = first_block.header().raw().number().into();
-    let count = args.count as usize;
+    let count = usize::try_from(args.count).context("--count does not fit in usize")?;
     let n_threads = args.threads.min(count);
     let url = Arc::new(args.url.clone());
-    let done = Arc::new(AtomicUsize::new(0));
+    let done = Arc::new(AtomicUsize::new(1));
 
     eprintln!("Fetching {} blocks with {} threads...", count, n_threads);
 
@@ -112,6 +114,9 @@ fn main() -> anyhow::Result<()> {
             thread::spawn(move || -> anyhow::Result<Vec<(usize, packed::Block)>> {
                 let mut results = Vec::with_capacity(chunk_end - chunk_start);
                 for idx in chunk_start..chunk_end {
+                    if idx == 0 {
+                        continue;
+                    }
                     let block = fetch_block_by_number(&url, start_number + idx as u64)?;
                     results.push((idx, block));
 
@@ -129,8 +134,8 @@ fn main() -> anyhow::Result<()> {
         })
         .collect();
 
-    // Pre-fill with the first block already fetched, overwrite slot 0 from
-    // the thread results to avoid a special-case after joining.
+    // Pre-fill with the first block fetched by hash; workers skip slot 0 so a
+    // reorg between RPC calls cannot replace it with a different block.
     let mut slots: Vec<Option<packed::Block>> = (0..count).map(|_| None).collect();
     slots[0] = Some(first_block);
 

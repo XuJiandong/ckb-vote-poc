@@ -11,8 +11,21 @@ const CKB_HASH_PERSONALIZATION: &[u8] = b"ckb-default-hash";
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     EmptyBlocks,
-    ParentHashMismatch { block_index: usize },
-    TransactionsRootMismatch { block_index: usize },
+    ParentHashMismatch {
+        block_index: usize,
+    },
+    TransactionsRootMismatch {
+        block_index: usize,
+    },
+    WitnessRootLengthMismatch {
+        expected: usize,
+        actual: usize,
+    },
+    ForbiddenCell {
+        block_index: usize,
+        transaction_index: usize,
+        input_index: usize,
+    },
 }
 
 fn blake2b_256(data: &[u8]) -> [u8; 32] {
@@ -64,10 +77,6 @@ fn byte32_to_arr(b: blockchain::Byte32Reader<'_>) -> [u8; 32] {
     arr
 }
 
-fn header_hash(header: blockchain::HeaderReader<'_>) -> [u8; 32] {
-    blake2b_256(header.as_slice())
-}
-
 fn tx_hash(tx: &blockchain::TransactionReader<'_>) -> [u8; 32] {
     blake2b_256(tx.raw().as_slice())
 }
@@ -100,7 +109,7 @@ pub struct BlockStats {
     pub cell_deps: usize,
 }
 
-pub fn collect_blocks_stats(blocks: BlockVecReader<'_>) -> BlockStats {
+pub fn collect_blocks_stats(blocks: BlockVecReader<'_>) -> Result<BlockStats, Error> {
     #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-start: block-stats");
     let block_count = blocks.len();
@@ -122,20 +131,25 @@ pub fn collect_blocks_stats(blocks: BlockVecReader<'_>) -> BlockStats {
     for i in 0..blocks.len() {
         let block = blocks.get(i).expect("should exist");
 
-        for tx in block.transactions().iter() {
+        for (transaction_index, tx) in block.transactions().iter().enumerate() {
             transaction_count += 1;
             cell_deps += tx.raw().cell_deps().len();
 
-            for input in tx.raw().inputs().iter() {
+            for (input_index, input) in tx.raw().inputs().iter().enumerate() {
                 let prev = input.previous_output();
                 let bytes: [u8; 36] = prev
                     .as_slice()
                     .try_into()
                     .expect("OutPoint is always 36 bytes");
-                assert!(
-                    !forbidden_cell.contains(&bytes),
-                    "input references a forbidden cell"
-                );
+                if forbidden_cell.contains(&bytes) {
+                    #[cfg(feature = "profiling")]
+                    println!("cycle-tracker-report-end: block-stats");
+                    return Err(Error::ForbiddenCell {
+                        block_index: i,
+                        transaction_index,
+                        input_index,
+                    });
+                }
             }
 
             for output in tx.raw().outputs().iter() {
@@ -148,13 +162,13 @@ pub fn collect_blocks_stats(blocks: BlockVecReader<'_>) -> BlockStats {
     }
     #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-end: block-stats");
-    BlockStats {
+    Ok(BlockStats {
         block_count,
         transaction_count,
         lock_scripts,
         type_scripts,
         cell_deps,
-    }
+    })
 }
 
 pub fn verify_block_integrity(
@@ -164,13 +178,19 @@ pub fn verify_block_integrity(
     if blocks.is_empty() {
         return Err(Error::EmptyBlocks);
     }
+    if witness_root.len() != blocks.len() {
+        return Err(Error::WitnessRootLengthMismatch {
+            expected: blocks.len(),
+            actual: witness_root.len(),
+        });
+    }
 
     #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-start: block");
     for i in 1..blocks.len() {
         let prev_block = blocks.get(i - 1).expect("should exist");
         let current_block = blocks.get(i).expect("should exist");
-        let prev_hash = header_hash(prev_block.header());
+        let prev_hash = compute_header_hash(prev_block.header());
         let parent_hash = byte32_to_arr(current_block.header().raw().parent_hash());
         if prev_hash != parent_hash {
             return Err(Error::ParentHashMismatch { block_index: i });
@@ -184,9 +204,7 @@ pub fn verify_block_integrity(
     for i in 0..blocks.len() {
         let block = blocks.get(i).expect("should exist");
         let expected_root = byte32_to_arr(block.header().raw().transactions_root());
-        let wr = witness_root
-            .get(i)
-            .expect("witness_root index out of bounds");
+        let wr = witness_root.get(i).expect("length checked above");
         let actual_root = calc_transactions_root(block, wr);
         if expected_root != actual_root {
             return Err(Error::TransactionsRootMismatch { block_index: i });
@@ -232,4 +250,29 @@ pub fn prepare_guest_program_arguments(bytes: &[u8]) -> GuestProgramArguments {
         .blocks(blocks_field)
         .witness_root(witness_root)
         .build()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use merkle_cbt::merkle_tree::Merge;
+
+    struct TestMerge;
+
+    impl Merge for TestMerge {
+        type Item = [u8; 32];
+
+        fn merge(left: &Self::Item, right: &Self::Item) -> Self::Item {
+            super::merge(left, right)
+        }
+    }
+
+    #[test]
+    fn merkle_root_matches_ckb_cbmt_for_odd_leaves() {
+        let leaves = [[1u8; 32], [2u8; 32], [3u8; 32]];
+        let expected = merkle_cbt::CBMT::<[u8; 32], TestMerge>::build_merkle_root(&leaves);
+
+        assert_eq!(merkle_root(&leaves), expected);
+        assert_ne!(expected, merge(&merge(&leaves[0], &leaves[1]), &leaves[2]));
+    }
 }

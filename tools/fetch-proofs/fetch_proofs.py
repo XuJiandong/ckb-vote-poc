@@ -204,11 +204,11 @@ def _decode_proof_request(data: bytes) -> dict:
     requester_bytes = _first(f, 13, b"")
     requester = ("0x" + requester_bytes.hex()) if isinstance(requester_bytes, bytes) else ""
 
-    created_at = _first(f, 18, 0)
+    created_at = _first(f, 18)
     fulfilled_at = _first(f, 20)  # optional
 
     time_taken_sec: int | None = None
-    if fulfilled_at and created_at:
+    if fulfilled_at is not None and created_at is not None:
         time_taken_sec = int(fulfilled_at) - int(created_at)
 
     gas_used: int | None = _first(f, 27)
@@ -239,12 +239,12 @@ def _decode_proof_request(data: bytes) -> dict:
 
     created_iso = (
         datetime.fromtimestamp(created_at, tz=timezone.utc).isoformat()
-        if created_at
+        if created_at is not None
         else None
     )
     fulfilled_iso = (
         datetime.fromtimestamp(fulfilled_at, tz=timezone.utc).isoformat()
-        if fulfilled_at
+        if fulfilled_at is not None
         else None
     )
 
@@ -292,16 +292,24 @@ def _parse_grpc_frames(raw: bytes) -> list[bytes]:
     frames = []
     pos = 0
     while pos + 5 <= len(raw):
+        frame_start = pos
         compression_flag = raw[pos]
         msg_len = struct.unpack(">I", raw[pos + 1: pos + 5])[0]
         pos += 5
         if compression_flag & 0x80:
             # Trailers frame — stop
-            break
+            return frames
+        if compression_flag != 0:
+            raise ValueError("compressed gRPC frames are not supported")
+        if pos + msg_len > len(raw):
+            raise ValueError("truncated gRPC frame")
         msg = raw[pos: pos + msg_len]
         pos += msg_len
-        if compression_flag == 0:
-            frames.append(msg)
+        if pos <= frame_start:
+            raise ValueError("gRPC frame parser did not advance")
+        frames.append(msg)
+    if pos != len(raw):
+        raise ValueError("truncated gRPC frame header")
     return frames
 
 

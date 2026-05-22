@@ -35,18 +35,23 @@ async fn main() {
     let client = ProverClient::builder().cpu().build().await;
 
     if cli.execute {
-        #[allow(unused_mut)]
         let (mut public_values, report) = client.execute(ELF, stdin).await.unwrap();
 
         let start_hash: [u8; 32] = public_values.read();
         let end_hash: [u8; 32] = public_values.read();
         let block_count: usize = public_values.read();
         let transaction_count: usize = public_values.read();
+        let lock_scripts: usize = public_values.read();
+        let type_scripts: usize = public_values.read();
+        let cell_deps: usize = public_values.read();
 
         println!("start block hash: 0x{}", hex::encode(start_hash));
         println!("end block hash:   0x{}", hex::encode(end_hash));
         println!("block count:       {}", block_count);
         println!("transaction count: {}", transaction_count);
+        println!("lock scripts:      {}", lock_scripts);
+        println!("type scripts:      {}", type_scripts);
+        println!("cell deps:         {}", cell_deps);
         #[cfg(feature = "profiling")]
         {
             let blake2b_cycles = report.cycle_tracker.get("blake2b").unwrap();
@@ -75,9 +80,6 @@ async fn main() {
             "executed program with {:.0} M instructions",
             report.total_instruction_count() as f64 / 1000.0 / 1000.0
         );
-
-        #[cfg(not(feature = "profiling"))]
-        let _ = (public_values, report);
     } else {
         let pk = client.setup(ELF).await.unwrap();
 
@@ -87,11 +89,17 @@ async fn main() {
         let end_hash: [u8; 32] = proof.public_values.read();
         let block_count: usize = proof.public_values.read();
         let transaction_count: usize = proof.public_values.read();
+        let lock_scripts: usize = proof.public_values.read();
+        let type_scripts: usize = proof.public_values.read();
+        let cell_deps: usize = proof.public_values.read();
 
         println!("start block hash: 0x{}", hex::encode(start_hash));
         println!("end block hash:   0x{}", hex::encode(end_hash));
         println!("block count:       {}", block_count);
         println!("transaction count: {}", transaction_count);
+        println!("lock scripts:      {}", lock_scripts);
+        println!("type scripts:      {}", type_scripts);
+        println!("cell deps:         {}", cell_deps);
 
         client
             .verify(&proof, pk.verifying_key(), None)
