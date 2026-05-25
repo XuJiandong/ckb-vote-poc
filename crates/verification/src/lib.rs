@@ -1,6 +1,6 @@
 use blake2::{Blake2b256, Digest, digest::CustomizedInit};
 use ckb_vote_types::molecules::{
-    blockchain,
+    blockchain::{self, Script},
     types::{BlockVec, BlockVecReader, GuestProgramArguments},
 };
 use molecule::prelude::{Builder, Entity, Reader};
@@ -100,7 +100,8 @@ pub struct BlockStats {
     pub cell_deps: usize,
 }
 
-pub fn collect_blocks_stats(blocks: BlockVecReader<'_>) -> BlockStats {
+// main entry to count vote.
+pub fn count_vote(blocks: BlockVecReader<'_>, proposal_script: Script) -> BlockStats {
     #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-start: block-stats");
     let block_count = blocks.len();

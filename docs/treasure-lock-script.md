@@ -2,6 +2,8 @@
 
 The treasury lock script is used together with the [proposal type script](./proposal-type-script.md).
 
+> **Note:** The economic model is still under discussion, so this lock script is subject to change. The current implementation is a demo and proof of concept.
+
 ## Script
 
 ```

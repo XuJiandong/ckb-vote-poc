@@ -46,11 +46,11 @@ It is a molecule structure as follows:
 table Proposal {
     duration: Uint32,
     vote_cell_code_hash: Byte32,
-    vote_cell_hash_type: Byte,
+    vote_cell_hash_type: byte,
     description: Bytes,
     receiver: Script,
     amount: Uint64,
-    minimal_requirement: Uint64
+    minimal_requirement: Uint64,
 }
 ```
 
@@ -85,7 +85,7 @@ table PublicValues {
     start_block_hash: Byte32,
     end_block_hash: Byte32,
     proposal_script: Script,
-    passed: Byte,
+    passed: byte,
     yes_vote: Uint64,
     no_vote: Uint64,
 }
@@ -105,7 +105,7 @@ The off-chain side generates the SP1 proof using block data as input. The on-cha
 The verifying key in `args` is a hash of the guest program. The guest program performance following tasks in zkVM:
 
 - The guest program receives, as input arguments, a sequence of block data beginning with the block containing the proposal cell. This sequence consists of exactly `duration + 1` consecutive blocks.
-- The guest program takes last argument as the proposal type script along with its corresponding cell data.
+- The guest program takes last argument as the proposal type script.
 - It reads the proposal cell from the first block and retrieves the vote cell type script. The guest program cannot choose a favorable block range: the start block hash and duration are committed as public values and verified on-chain. The end block hash is also committed to prove that the end block exists on-chain.
 - It verifies that `parent_hash` matches between adjacent blocks.
 - It verifies that the `transactions_root` field in each block matches the expected value according to the [block structure RFC](https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0027-block-structure/0027-block-structure.md). Additional verification steps can be included as needed, but are not detailed here.

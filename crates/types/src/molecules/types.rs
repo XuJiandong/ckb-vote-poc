@@ -385,6 +385,7 @@ impl ::core::fmt::Display for GuestProgramArguments {
         write!(f, "{} {{ ", Self::NAME)?;
         write!(f, "{}: {}", "blocks", self.blocks())?;
         write!(f, ", {}: {}", "witness_root", self.witness_root())?;
+        write!(f, ", {}: {}", "proposal_script", self.proposal_script())?;
         let extra_count = self.count_extra_fields();
         if extra_count != 0 {
             write!(f, ", .. ({} fields)", extra_count)?;
@@ -399,10 +400,12 @@ impl ::core::default::Default for GuestProgramArguments {
     }
 }
 impl GuestProgramArguments {
-    const DEFAULT_VALUE: [u8; 20] = [
-        20, 0, 0, 0, 12, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    const DEFAULT_VALUE: [u8; 77] = [
+        77, 0, 0, 0, 16, 0, 0, 0, 20, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 53, 0, 0, 0,
+        16, 0, 0, 0, 48, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
-    pub const FIELD_COUNT: usize = 2;
+    pub const FIELD_COUNT: usize = 3;
     pub fn total_size(&self) -> usize {
         molecule::unpack_number(self.as_slice()) as usize
     }
@@ -428,11 +431,17 @@ impl GuestProgramArguments {
     pub fn witness_root(&self) -> Byte32Vec {
         let slice = self.as_slice();
         let start = molecule::unpack_number(&slice[8..]) as usize;
+        let end = molecule::unpack_number(&slice[12..]) as usize;
+        Byte32Vec::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn proposal_script(&self) -> Script {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[12..]) as usize;
         if self.has_extra_fields() {
-            let end = molecule::unpack_number(&slice[12..]) as usize;
-            Byte32Vec::new_unchecked(self.0.slice(start..end))
+            let end = molecule::unpack_number(&slice[16..]) as usize;
+            Script::new_unchecked(self.0.slice(start..end))
         } else {
-            Byte32Vec::new_unchecked(self.0.slice(start..))
+            Script::new_unchecked(self.0.slice(start..))
         }
     }
     pub fn as_reader<'r>(&'r self) -> GuestProgramArgumentsReader<'r> {
@@ -464,6 +473,7 @@ impl molecule::prelude::Entity for GuestProgramArguments {
         Self::new_builder()
             .blocks(self.blocks())
             .witness_root(self.witness_root())
+            .proposal_script(self.proposal_script())
     }
 }
 #[derive(Clone, Copy)]
@@ -487,6 +497,7 @@ impl<'r> ::core::fmt::Display for GuestProgramArgumentsReader<'r> {
         write!(f, "{} {{ ", Self::NAME)?;
         write!(f, "{}: {}", "blocks", self.blocks())?;
         write!(f, ", {}: {}", "witness_root", self.witness_root())?;
+        write!(f, ", {}: {}", "proposal_script", self.proposal_script())?;
         let extra_count = self.count_extra_fields();
         if extra_count != 0 {
             write!(f, ", .. ({} fields)", extra_count)?;
@@ -495,7 +506,7 @@ impl<'r> ::core::fmt::Display for GuestProgramArgumentsReader<'r> {
     }
 }
 impl<'r> GuestProgramArgumentsReader<'r> {
-    pub const FIELD_COUNT: usize = 2;
+    pub const FIELD_COUNT: usize = 3;
     pub fn total_size(&self) -> usize {
         molecule::unpack_number(self.as_slice()) as usize
     }
@@ -521,11 +532,17 @@ impl<'r> GuestProgramArgumentsReader<'r> {
     pub fn witness_root(&self) -> Byte32VecReader<'r> {
         let slice = self.as_slice();
         let start = molecule::unpack_number(&slice[8..]) as usize;
+        let end = molecule::unpack_number(&slice[12..]) as usize;
+        Byte32VecReader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn proposal_script(&self) -> ScriptReader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[12..]) as usize;
         if self.has_extra_fields() {
-            let end = molecule::unpack_number(&slice[12..]) as usize;
-            Byte32VecReader::new_unchecked(&self.as_slice()[start..end])
+            let end = molecule::unpack_number(&slice[16..]) as usize;
+            ScriptReader::new_unchecked(&self.as_slice()[start..end])
         } else {
-            Byte32VecReader::new_unchecked(&self.as_slice()[start..])
+            ScriptReader::new_unchecked(&self.as_slice()[start..])
         }
     }
 }
@@ -577,6 +594,7 @@ impl<'r> molecule::prelude::Reader<'r> for GuestProgramArgumentsReader<'r> {
         }
         BytesReader::verify(&slice[offsets[0]..offsets[1]], compatible)?;
         Byte32VecReader::verify(&slice[offsets[1]..offsets[2]], compatible)?;
+        ScriptReader::verify(&slice[offsets[2]..offsets[3]], compatible)?;
         Ok(())
     }
 }
@@ -584,9 +602,10 @@ impl<'r> molecule::prelude::Reader<'r> for GuestProgramArgumentsReader<'r> {
 pub struct GuestProgramArgumentsBuilder {
     pub(crate) blocks: Bytes,
     pub(crate) witness_root: Byte32Vec,
+    pub(crate) proposal_script: Script,
 }
 impl GuestProgramArgumentsBuilder {
-    pub const FIELD_COUNT: usize = 2;
+    pub const FIELD_COUNT: usize = 3;
     pub fn blocks<T>(mut self, v: T) -> Self
     where
         T: ::core::convert::Into<Bytes>,
@@ -601,6 +620,13 @@ impl GuestProgramArgumentsBuilder {
         self.witness_root = v.into();
         self
     }
+    pub fn proposal_script<T>(mut self, v: T) -> Self
+    where
+        T: ::core::convert::Into<Script>,
+    {
+        self.proposal_script = v.into();
+        self
+    }
 }
 impl molecule::prelude::Builder for GuestProgramArgumentsBuilder {
     type Entity = GuestProgramArguments;
@@ -609,6 +635,7 @@ impl molecule::prelude::Builder for GuestProgramArgumentsBuilder {
         molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1)
             + self.blocks.as_slice().len()
             + self.witness_root.as_slice().len()
+            + self.proposal_script.as_slice().len()
     }
     fn write<W: molecule::io::Write>(&self, writer: &mut W) -> molecule::io::Result<()> {
         let mut total_size = molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1);
@@ -617,12 +644,15 @@ impl molecule::prelude::Builder for GuestProgramArgumentsBuilder {
         total_size += self.blocks.as_slice().len();
         offsets.push(total_size);
         total_size += self.witness_root.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.proposal_script.as_slice().len();
         writer.write_all(&molecule::pack_number(total_size as molecule::Number))?;
         for offset in offsets.into_iter() {
             writer.write_all(&molecule::pack_number(offset as molecule::Number))?;
         }
         writer.write_all(self.blocks.as_slice())?;
         writer.write_all(self.witness_root.as_slice())?;
+        writer.write_all(self.proposal_script.as_slice())?;
         Ok(())
     }
     fn build(&self) -> Self::Entity {
@@ -630,5 +660,865 @@ impl molecule::prelude::Builder for GuestProgramArgumentsBuilder {
         self.write(&mut inner)
             .unwrap_or_else(|_| panic!("{} build should be ok", Self::NAME));
         GuestProgramArguments::new_unchecked(inner.into())
+    }
+}
+#[derive(Clone)]
+pub struct Proposal(molecule::bytes::Bytes);
+impl ::core::fmt::LowerHex for Proposal {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        use molecule::hex_string;
+        if f.alternate() {
+            write!(f, "0x")?;
+        }
+        write!(f, "{}", hex_string(self.as_slice()))
+    }
+}
+impl ::core::fmt::Debug for Proposal {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        write!(f, "{}({:#x})", Self::NAME, self)
+    }
+}
+impl ::core::fmt::Display for Proposal {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        write!(f, "{} {{ ", Self::NAME)?;
+        write!(f, "{}: {}", "duration", self.duration())?;
+        write!(
+            f,
+            ", {}: {}",
+            "vote_cell_code_hash",
+            self.vote_cell_code_hash()
+        )?;
+        write!(
+            f,
+            ", {}: {}",
+            "vote_cell_hash_type",
+            self.vote_cell_hash_type()
+        )?;
+        write!(f, ", {}: {}", "description", self.description())?;
+        write!(f, ", {}: {}", "receiver", self.receiver())?;
+        write!(f, ", {}: {}", "amount", self.amount())?;
+        write!(
+            f,
+            ", {}: {}",
+            "minimal_requirement",
+            self.minimal_requirement()
+        )?;
+        let extra_count = self.count_extra_fields();
+        if extra_count != 0 {
+            write!(f, ", .. ({} fields)", extra_count)?;
+        }
+        write!(f, " }}")
+    }
+}
+impl ::core::default::Default for Proposal {
+    fn default() -> Self {
+        let v = molecule::bytes::Bytes::from_static(&Self::DEFAULT_VALUE);
+        Proposal::new_unchecked(v)
+    }
+}
+impl Proposal {
+    const DEFAULT_VALUE: [u8; 142] = [
+        142, 0, 0, 0, 32, 0, 0, 0, 36, 0, 0, 0, 68, 0, 0, 0, 69, 0, 0, 0, 73, 0, 0, 0, 126, 0, 0,
+        0, 134, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 53, 0, 0, 0, 16, 0, 0, 0, 48, 0, 0, 0, 49,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ];
+    pub const FIELD_COUNT: usize = 7;
+    pub fn total_size(&self) -> usize {
+        molecule::unpack_number(self.as_slice()) as usize
+    }
+    pub fn field_count(&self) -> usize {
+        if self.total_size() == molecule::NUMBER_SIZE {
+            0
+        } else {
+            (molecule::unpack_number(&self.as_slice()[molecule::NUMBER_SIZE..]) as usize / 4) - 1
+        }
+    }
+    pub fn count_extra_fields(&self) -> usize {
+        self.field_count() - Self::FIELD_COUNT
+    }
+    pub fn has_extra_fields(&self) -> bool {
+        Self::FIELD_COUNT != self.field_count()
+    }
+    pub fn duration(&self) -> Uint32 {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[4..]) as usize;
+        let end = molecule::unpack_number(&slice[8..]) as usize;
+        Uint32::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn vote_cell_code_hash(&self) -> Byte32 {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[8..]) as usize;
+        let end = molecule::unpack_number(&slice[12..]) as usize;
+        Byte32::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn vote_cell_hash_type(&self) -> Byte {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[12..]) as usize;
+        let end = molecule::unpack_number(&slice[16..]) as usize;
+        Byte::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn description(&self) -> Bytes {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[16..]) as usize;
+        let end = molecule::unpack_number(&slice[20..]) as usize;
+        Bytes::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn receiver(&self) -> Script {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[20..]) as usize;
+        let end = molecule::unpack_number(&slice[24..]) as usize;
+        Script::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn amount(&self) -> Uint64 {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[24..]) as usize;
+        let end = molecule::unpack_number(&slice[28..]) as usize;
+        Uint64::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn minimal_requirement(&self) -> Uint64 {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[28..]) as usize;
+        if self.has_extra_fields() {
+            let end = molecule::unpack_number(&slice[32..]) as usize;
+            Uint64::new_unchecked(self.0.slice(start..end))
+        } else {
+            Uint64::new_unchecked(self.0.slice(start..))
+        }
+    }
+    pub fn as_reader<'r>(&'r self) -> ProposalReader<'r> {
+        ProposalReader::new_unchecked(self.as_slice())
+    }
+}
+impl molecule::prelude::Entity for Proposal {
+    type Builder = ProposalBuilder;
+    const NAME: &'static str = "Proposal";
+    fn new_unchecked(data: molecule::bytes::Bytes) -> Self {
+        Proposal(data)
+    }
+    fn as_bytes(&self) -> molecule::bytes::Bytes {
+        self.0.clone()
+    }
+    fn as_slice(&self) -> &[u8] {
+        &self.0[..]
+    }
+    fn from_slice(slice: &[u8]) -> molecule::error::VerificationResult<Self> {
+        ProposalReader::from_slice(slice).map(|reader| reader.to_entity())
+    }
+    fn from_compatible_slice(slice: &[u8]) -> molecule::error::VerificationResult<Self> {
+        ProposalReader::from_compatible_slice(slice).map(|reader| reader.to_entity())
+    }
+    fn new_builder() -> Self::Builder {
+        ::core::default::Default::default()
+    }
+    fn as_builder(self) -> Self::Builder {
+        Self::new_builder()
+            .duration(self.duration())
+            .vote_cell_code_hash(self.vote_cell_code_hash())
+            .vote_cell_hash_type(self.vote_cell_hash_type())
+            .description(self.description())
+            .receiver(self.receiver())
+            .amount(self.amount())
+            .minimal_requirement(self.minimal_requirement())
+    }
+}
+#[derive(Clone, Copy)]
+pub struct ProposalReader<'r>(&'r [u8]);
+impl<'r> ::core::fmt::LowerHex for ProposalReader<'r> {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        use molecule::hex_string;
+        if f.alternate() {
+            write!(f, "0x")?;
+        }
+        write!(f, "{}", hex_string(self.as_slice()))
+    }
+}
+impl<'r> ::core::fmt::Debug for ProposalReader<'r> {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        write!(f, "{}({:#x})", Self::NAME, self)
+    }
+}
+impl<'r> ::core::fmt::Display for ProposalReader<'r> {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        write!(f, "{} {{ ", Self::NAME)?;
+        write!(f, "{}: {}", "duration", self.duration())?;
+        write!(
+            f,
+            ", {}: {}",
+            "vote_cell_code_hash",
+            self.vote_cell_code_hash()
+        )?;
+        write!(
+            f,
+            ", {}: {}",
+            "vote_cell_hash_type",
+            self.vote_cell_hash_type()
+        )?;
+        write!(f, ", {}: {}", "description", self.description())?;
+        write!(f, ", {}: {}", "receiver", self.receiver())?;
+        write!(f, ", {}: {}", "amount", self.amount())?;
+        write!(
+            f,
+            ", {}: {}",
+            "minimal_requirement",
+            self.minimal_requirement()
+        )?;
+        let extra_count = self.count_extra_fields();
+        if extra_count != 0 {
+            write!(f, ", .. ({} fields)", extra_count)?;
+        }
+        write!(f, " }}")
+    }
+}
+impl<'r> ProposalReader<'r> {
+    pub const FIELD_COUNT: usize = 7;
+    pub fn total_size(&self) -> usize {
+        molecule::unpack_number(self.as_slice()) as usize
+    }
+    pub fn field_count(&self) -> usize {
+        if self.total_size() == molecule::NUMBER_SIZE {
+            0
+        } else {
+            (molecule::unpack_number(&self.as_slice()[molecule::NUMBER_SIZE..]) as usize / 4) - 1
+        }
+    }
+    pub fn count_extra_fields(&self) -> usize {
+        self.field_count() - Self::FIELD_COUNT
+    }
+    pub fn has_extra_fields(&self) -> bool {
+        Self::FIELD_COUNT != self.field_count()
+    }
+    pub fn duration(&self) -> Uint32Reader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[4..]) as usize;
+        let end = molecule::unpack_number(&slice[8..]) as usize;
+        Uint32Reader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn vote_cell_code_hash(&self) -> Byte32Reader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[8..]) as usize;
+        let end = molecule::unpack_number(&slice[12..]) as usize;
+        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn vote_cell_hash_type(&self) -> ByteReader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[12..]) as usize;
+        let end = molecule::unpack_number(&slice[16..]) as usize;
+        ByteReader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn description(&self) -> BytesReader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[16..]) as usize;
+        let end = molecule::unpack_number(&slice[20..]) as usize;
+        BytesReader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn receiver(&self) -> ScriptReader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[20..]) as usize;
+        let end = molecule::unpack_number(&slice[24..]) as usize;
+        ScriptReader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn amount(&self) -> Uint64Reader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[24..]) as usize;
+        let end = molecule::unpack_number(&slice[28..]) as usize;
+        Uint64Reader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn minimal_requirement(&self) -> Uint64Reader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[28..]) as usize;
+        if self.has_extra_fields() {
+            let end = molecule::unpack_number(&slice[32..]) as usize;
+            Uint64Reader::new_unchecked(&self.as_slice()[start..end])
+        } else {
+            Uint64Reader::new_unchecked(&self.as_slice()[start..])
+        }
+    }
+}
+impl<'r> molecule::prelude::Reader<'r> for ProposalReader<'r> {
+    type Entity = Proposal;
+    const NAME: &'static str = "ProposalReader";
+    fn to_entity(&self) -> Self::Entity {
+        Self::Entity::new_unchecked(self.as_slice().to_owned().into())
+    }
+    fn new_unchecked(slice: &'r [u8]) -> Self {
+        ProposalReader(slice)
+    }
+    fn as_slice(&self) -> &'r [u8] {
+        self.0
+    }
+    fn verify(slice: &[u8], compatible: bool) -> molecule::error::VerificationResult<()> {
+        use molecule::verification_error as ve;
+        let slice_len = slice.len();
+        if slice_len < molecule::NUMBER_SIZE {
+            return ve!(Self, HeaderIsBroken, molecule::NUMBER_SIZE, slice_len);
+        }
+        let total_size = molecule::unpack_number(slice) as usize;
+        if slice_len != total_size {
+            return ve!(Self, TotalSizeNotMatch, total_size, slice_len);
+        }
+        if slice_len < molecule::NUMBER_SIZE * 2 {
+            return ve!(Self, HeaderIsBroken, molecule::NUMBER_SIZE * 2, slice_len);
+        }
+        let offset_first = molecule::unpack_number(&slice[molecule::NUMBER_SIZE..]) as usize;
+        if offset_first % molecule::NUMBER_SIZE != 0 || offset_first < molecule::NUMBER_SIZE * 2 {
+            return ve!(Self, OffsetsNotMatch);
+        }
+        if slice_len < offset_first {
+            return ve!(Self, HeaderIsBroken, offset_first, slice_len);
+        }
+        let field_count = offset_first / molecule::NUMBER_SIZE - 1;
+        if field_count < Self::FIELD_COUNT {
+            return ve!(Self, FieldCountNotMatch, Self::FIELD_COUNT, field_count);
+        } else if !compatible && field_count > Self::FIELD_COUNT {
+            return ve!(Self, FieldCountNotMatch, Self::FIELD_COUNT, field_count);
+        };
+        let mut offsets: Vec<usize> = slice[molecule::NUMBER_SIZE..offset_first]
+            .chunks_exact(molecule::NUMBER_SIZE)
+            .map(|x| molecule::unpack_number(x) as usize)
+            .collect();
+        offsets.push(total_size);
+        if offsets.windows(2).any(|i| i[0] > i[1]) {
+            return ve!(Self, OffsetsNotMatch);
+        }
+        Uint32Reader::verify(&slice[offsets[0]..offsets[1]], compatible)?;
+        Byte32Reader::verify(&slice[offsets[1]..offsets[2]], compatible)?;
+        ByteReader::verify(&slice[offsets[2]..offsets[3]], compatible)?;
+        BytesReader::verify(&slice[offsets[3]..offsets[4]], compatible)?;
+        ScriptReader::verify(&slice[offsets[4]..offsets[5]], compatible)?;
+        Uint64Reader::verify(&slice[offsets[5]..offsets[6]], compatible)?;
+        Uint64Reader::verify(&slice[offsets[6]..offsets[7]], compatible)?;
+        Ok(())
+    }
+}
+#[derive(Clone, Debug, Default)]
+pub struct ProposalBuilder {
+    pub(crate) duration: Uint32,
+    pub(crate) vote_cell_code_hash: Byte32,
+    pub(crate) vote_cell_hash_type: Byte,
+    pub(crate) description: Bytes,
+    pub(crate) receiver: Script,
+    pub(crate) amount: Uint64,
+    pub(crate) minimal_requirement: Uint64,
+}
+impl ProposalBuilder {
+    pub const FIELD_COUNT: usize = 7;
+    pub fn duration<T>(mut self, v: T) -> Self
+    where
+        T: ::core::convert::Into<Uint32>,
+    {
+        self.duration = v.into();
+        self
+    }
+    pub fn vote_cell_code_hash<T>(mut self, v: T) -> Self
+    where
+        T: ::core::convert::Into<Byte32>,
+    {
+        self.vote_cell_code_hash = v.into();
+        self
+    }
+    pub fn vote_cell_hash_type<T>(mut self, v: T) -> Self
+    where
+        T: ::core::convert::Into<Byte>,
+    {
+        self.vote_cell_hash_type = v.into();
+        self
+    }
+    pub fn description<T>(mut self, v: T) -> Self
+    where
+        T: ::core::convert::Into<Bytes>,
+    {
+        self.description = v.into();
+        self
+    }
+    pub fn receiver<T>(mut self, v: T) -> Self
+    where
+        T: ::core::convert::Into<Script>,
+    {
+        self.receiver = v.into();
+        self
+    }
+    pub fn amount<T>(mut self, v: T) -> Self
+    where
+        T: ::core::convert::Into<Uint64>,
+    {
+        self.amount = v.into();
+        self
+    }
+    pub fn minimal_requirement<T>(mut self, v: T) -> Self
+    where
+        T: ::core::convert::Into<Uint64>,
+    {
+        self.minimal_requirement = v.into();
+        self
+    }
+}
+impl molecule::prelude::Builder for ProposalBuilder {
+    type Entity = Proposal;
+    const NAME: &'static str = "ProposalBuilder";
+    fn expected_length(&self) -> usize {
+        molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1)
+            + self.duration.as_slice().len()
+            + self.vote_cell_code_hash.as_slice().len()
+            + self.vote_cell_hash_type.as_slice().len()
+            + self.description.as_slice().len()
+            + self.receiver.as_slice().len()
+            + self.amount.as_slice().len()
+            + self.minimal_requirement.as_slice().len()
+    }
+    fn write<W: molecule::io::Write>(&self, writer: &mut W) -> molecule::io::Result<()> {
+        let mut total_size = molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1);
+        let mut offsets = Vec::with_capacity(Self::FIELD_COUNT);
+        offsets.push(total_size);
+        total_size += self.duration.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.vote_cell_code_hash.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.vote_cell_hash_type.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.description.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.receiver.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.amount.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.minimal_requirement.as_slice().len();
+        writer.write_all(&molecule::pack_number(total_size as molecule::Number))?;
+        for offset in offsets.into_iter() {
+            writer.write_all(&molecule::pack_number(offset as molecule::Number))?;
+        }
+        writer.write_all(self.duration.as_slice())?;
+        writer.write_all(self.vote_cell_code_hash.as_slice())?;
+        writer.write_all(self.vote_cell_hash_type.as_slice())?;
+        writer.write_all(self.description.as_slice())?;
+        writer.write_all(self.receiver.as_slice())?;
+        writer.write_all(self.amount.as_slice())?;
+        writer.write_all(self.minimal_requirement.as_slice())?;
+        Ok(())
+    }
+    fn build(&self) -> Self::Entity {
+        let mut inner = Vec::with_capacity(self.expected_length());
+        self.write(&mut inner)
+            .unwrap_or_else(|_| panic!("{} build should be ok", Self::NAME));
+        Proposal::new_unchecked(inner.into())
+    }
+}
+#[derive(Clone)]
+pub struct PublicValues(molecule::bytes::Bytes);
+impl ::core::fmt::LowerHex for PublicValues {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        use molecule::hex_string;
+        if f.alternate() {
+            write!(f, "0x")?;
+        }
+        write!(f, "{}", hex_string(self.as_slice()))
+    }
+}
+impl ::core::fmt::Debug for PublicValues {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        write!(f, "{}({:#x})", Self::NAME, self)
+    }
+}
+impl ::core::fmt::Display for PublicValues {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        write!(f, "{} {{ ", Self::NAME)?;
+        write!(f, "{}: {}", "proposal", self.proposal())?;
+        write!(f, ", {}: {}", "start_block_hash", self.start_block_hash())?;
+        write!(f, ", {}: {}", "end_block_hash", self.end_block_hash())?;
+        write!(f, ", {}: {}", "proposal_script", self.proposal_script())?;
+        write!(f, ", {}: {}", "passed", self.passed())?;
+        write!(f, ", {}: {}", "yes_vote", self.yes_vote())?;
+        write!(f, ", {}: {}", "no_vote", self.no_vote())?;
+        let extra_count = self.count_extra_fields();
+        if extra_count != 0 {
+            write!(f, ", .. ({} fields)", extra_count)?;
+        }
+        write!(f, " }}")
+    }
+}
+impl ::core::default::Default for PublicValues {
+    fn default() -> Self {
+        let v = molecule::bytes::Bytes::from_static(&Self::DEFAULT_VALUE);
+        PublicValues::new_unchecked(v)
+    }
+}
+impl PublicValues {
+    const DEFAULT_VALUE: [u8; 308] = [
+        52, 1, 0, 0, 32, 0, 0, 0, 174, 0, 0, 0, 206, 0, 0, 0, 238, 0, 0, 0, 35, 1, 0, 0, 36, 1, 0,
+        0, 44, 1, 0, 0, 142, 0, 0, 0, 32, 0, 0, 0, 36, 0, 0, 0, 68, 0, 0, 0, 69, 0, 0, 0, 73, 0, 0,
+        0, 126, 0, 0, 0, 134, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 53, 0, 0, 0, 16, 0, 0, 0,
+        48, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 53, 0, 0, 0, 16, 0, 0, 0, 48, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ];
+    pub const FIELD_COUNT: usize = 7;
+    pub fn total_size(&self) -> usize {
+        molecule::unpack_number(self.as_slice()) as usize
+    }
+    pub fn field_count(&self) -> usize {
+        if self.total_size() == molecule::NUMBER_SIZE {
+            0
+        } else {
+            (molecule::unpack_number(&self.as_slice()[molecule::NUMBER_SIZE..]) as usize / 4) - 1
+        }
+    }
+    pub fn count_extra_fields(&self) -> usize {
+        self.field_count() - Self::FIELD_COUNT
+    }
+    pub fn has_extra_fields(&self) -> bool {
+        Self::FIELD_COUNT != self.field_count()
+    }
+    pub fn proposal(&self) -> Proposal {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[4..]) as usize;
+        let end = molecule::unpack_number(&slice[8..]) as usize;
+        Proposal::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn start_block_hash(&self) -> Byte32 {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[8..]) as usize;
+        let end = molecule::unpack_number(&slice[12..]) as usize;
+        Byte32::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn end_block_hash(&self) -> Byte32 {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[12..]) as usize;
+        let end = molecule::unpack_number(&slice[16..]) as usize;
+        Byte32::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn proposal_script(&self) -> Script {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[16..]) as usize;
+        let end = molecule::unpack_number(&slice[20..]) as usize;
+        Script::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn passed(&self) -> Byte {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[20..]) as usize;
+        let end = molecule::unpack_number(&slice[24..]) as usize;
+        Byte::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn yes_vote(&self) -> Uint64 {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[24..]) as usize;
+        let end = molecule::unpack_number(&slice[28..]) as usize;
+        Uint64::new_unchecked(self.0.slice(start..end))
+    }
+    pub fn no_vote(&self) -> Uint64 {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[28..]) as usize;
+        if self.has_extra_fields() {
+            let end = molecule::unpack_number(&slice[32..]) as usize;
+            Uint64::new_unchecked(self.0.slice(start..end))
+        } else {
+            Uint64::new_unchecked(self.0.slice(start..))
+        }
+    }
+    pub fn as_reader<'r>(&'r self) -> PublicValuesReader<'r> {
+        PublicValuesReader::new_unchecked(self.as_slice())
+    }
+}
+impl molecule::prelude::Entity for PublicValues {
+    type Builder = PublicValuesBuilder;
+    const NAME: &'static str = "PublicValues";
+    fn new_unchecked(data: molecule::bytes::Bytes) -> Self {
+        PublicValues(data)
+    }
+    fn as_bytes(&self) -> molecule::bytes::Bytes {
+        self.0.clone()
+    }
+    fn as_slice(&self) -> &[u8] {
+        &self.0[..]
+    }
+    fn from_slice(slice: &[u8]) -> molecule::error::VerificationResult<Self> {
+        PublicValuesReader::from_slice(slice).map(|reader| reader.to_entity())
+    }
+    fn from_compatible_slice(slice: &[u8]) -> molecule::error::VerificationResult<Self> {
+        PublicValuesReader::from_compatible_slice(slice).map(|reader| reader.to_entity())
+    }
+    fn new_builder() -> Self::Builder {
+        ::core::default::Default::default()
+    }
+    fn as_builder(self) -> Self::Builder {
+        Self::new_builder()
+            .proposal(self.proposal())
+            .start_block_hash(self.start_block_hash())
+            .end_block_hash(self.end_block_hash())
+            .proposal_script(self.proposal_script())
+            .passed(self.passed())
+            .yes_vote(self.yes_vote())
+            .no_vote(self.no_vote())
+    }
+}
+#[derive(Clone, Copy)]
+pub struct PublicValuesReader<'r>(&'r [u8]);
+impl<'r> ::core::fmt::LowerHex for PublicValuesReader<'r> {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        use molecule::hex_string;
+        if f.alternate() {
+            write!(f, "0x")?;
+        }
+        write!(f, "{}", hex_string(self.as_slice()))
+    }
+}
+impl<'r> ::core::fmt::Debug for PublicValuesReader<'r> {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        write!(f, "{}({:#x})", Self::NAME, self)
+    }
+}
+impl<'r> ::core::fmt::Display for PublicValuesReader<'r> {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        write!(f, "{} {{ ", Self::NAME)?;
+        write!(f, "{}: {}", "proposal", self.proposal())?;
+        write!(f, ", {}: {}", "start_block_hash", self.start_block_hash())?;
+        write!(f, ", {}: {}", "end_block_hash", self.end_block_hash())?;
+        write!(f, ", {}: {}", "proposal_script", self.proposal_script())?;
+        write!(f, ", {}: {}", "passed", self.passed())?;
+        write!(f, ", {}: {}", "yes_vote", self.yes_vote())?;
+        write!(f, ", {}: {}", "no_vote", self.no_vote())?;
+        let extra_count = self.count_extra_fields();
+        if extra_count != 0 {
+            write!(f, ", .. ({} fields)", extra_count)?;
+        }
+        write!(f, " }}")
+    }
+}
+impl<'r> PublicValuesReader<'r> {
+    pub const FIELD_COUNT: usize = 7;
+    pub fn total_size(&self) -> usize {
+        molecule::unpack_number(self.as_slice()) as usize
+    }
+    pub fn field_count(&self) -> usize {
+        if self.total_size() == molecule::NUMBER_SIZE {
+            0
+        } else {
+            (molecule::unpack_number(&self.as_slice()[molecule::NUMBER_SIZE..]) as usize / 4) - 1
+        }
+    }
+    pub fn count_extra_fields(&self) -> usize {
+        self.field_count() - Self::FIELD_COUNT
+    }
+    pub fn has_extra_fields(&self) -> bool {
+        Self::FIELD_COUNT != self.field_count()
+    }
+    pub fn proposal(&self) -> ProposalReader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[4..]) as usize;
+        let end = molecule::unpack_number(&slice[8..]) as usize;
+        ProposalReader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn start_block_hash(&self) -> Byte32Reader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[8..]) as usize;
+        let end = molecule::unpack_number(&slice[12..]) as usize;
+        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn end_block_hash(&self) -> Byte32Reader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[12..]) as usize;
+        let end = molecule::unpack_number(&slice[16..]) as usize;
+        Byte32Reader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn proposal_script(&self) -> ScriptReader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[16..]) as usize;
+        let end = molecule::unpack_number(&slice[20..]) as usize;
+        ScriptReader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn passed(&self) -> ByteReader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[20..]) as usize;
+        let end = molecule::unpack_number(&slice[24..]) as usize;
+        ByteReader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn yes_vote(&self) -> Uint64Reader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[24..]) as usize;
+        let end = molecule::unpack_number(&slice[28..]) as usize;
+        Uint64Reader::new_unchecked(&self.as_slice()[start..end])
+    }
+    pub fn no_vote(&self) -> Uint64Reader<'r> {
+        let slice = self.as_slice();
+        let start = molecule::unpack_number(&slice[28..]) as usize;
+        if self.has_extra_fields() {
+            let end = molecule::unpack_number(&slice[32..]) as usize;
+            Uint64Reader::new_unchecked(&self.as_slice()[start..end])
+        } else {
+            Uint64Reader::new_unchecked(&self.as_slice()[start..])
+        }
+    }
+}
+impl<'r> molecule::prelude::Reader<'r> for PublicValuesReader<'r> {
+    type Entity = PublicValues;
+    const NAME: &'static str = "PublicValuesReader";
+    fn to_entity(&self) -> Self::Entity {
+        Self::Entity::new_unchecked(self.as_slice().to_owned().into())
+    }
+    fn new_unchecked(slice: &'r [u8]) -> Self {
+        PublicValuesReader(slice)
+    }
+    fn as_slice(&self) -> &'r [u8] {
+        self.0
+    }
+    fn verify(slice: &[u8], compatible: bool) -> molecule::error::VerificationResult<()> {
+        use molecule::verification_error as ve;
+        let slice_len = slice.len();
+        if slice_len < molecule::NUMBER_SIZE {
+            return ve!(Self, HeaderIsBroken, molecule::NUMBER_SIZE, slice_len);
+        }
+        let total_size = molecule::unpack_number(slice) as usize;
+        if slice_len != total_size {
+            return ve!(Self, TotalSizeNotMatch, total_size, slice_len);
+        }
+        if slice_len < molecule::NUMBER_SIZE * 2 {
+            return ve!(Self, HeaderIsBroken, molecule::NUMBER_SIZE * 2, slice_len);
+        }
+        let offset_first = molecule::unpack_number(&slice[molecule::NUMBER_SIZE..]) as usize;
+        if offset_first % molecule::NUMBER_SIZE != 0 || offset_first < molecule::NUMBER_SIZE * 2 {
+            return ve!(Self, OffsetsNotMatch);
+        }
+        if slice_len < offset_first {
+            return ve!(Self, HeaderIsBroken, offset_first, slice_len);
+        }
+        let field_count = offset_first / molecule::NUMBER_SIZE - 1;
+        if field_count < Self::FIELD_COUNT {
+            return ve!(Self, FieldCountNotMatch, Self::FIELD_COUNT, field_count);
+        } else if !compatible && field_count > Self::FIELD_COUNT {
+            return ve!(Self, FieldCountNotMatch, Self::FIELD_COUNT, field_count);
+        };
+        let mut offsets: Vec<usize> = slice[molecule::NUMBER_SIZE..offset_first]
+            .chunks_exact(molecule::NUMBER_SIZE)
+            .map(|x| molecule::unpack_number(x) as usize)
+            .collect();
+        offsets.push(total_size);
+        if offsets.windows(2).any(|i| i[0] > i[1]) {
+            return ve!(Self, OffsetsNotMatch);
+        }
+        ProposalReader::verify(&slice[offsets[0]..offsets[1]], compatible)?;
+        Byte32Reader::verify(&slice[offsets[1]..offsets[2]], compatible)?;
+        Byte32Reader::verify(&slice[offsets[2]..offsets[3]], compatible)?;
+        ScriptReader::verify(&slice[offsets[3]..offsets[4]], compatible)?;
+        ByteReader::verify(&slice[offsets[4]..offsets[5]], compatible)?;
+        Uint64Reader::verify(&slice[offsets[5]..offsets[6]], compatible)?;
+        Uint64Reader::verify(&slice[offsets[6]..offsets[7]], compatible)?;
+        Ok(())
+    }
+}
+#[derive(Clone, Debug, Default)]
+pub struct PublicValuesBuilder {
+    pub(crate) proposal: Proposal,
+    pub(crate) start_block_hash: Byte32,
+    pub(crate) end_block_hash: Byte32,
+    pub(crate) proposal_script: Script,
+    pub(crate) passed: Byte,
+    pub(crate) yes_vote: Uint64,
+    pub(crate) no_vote: Uint64,
+}
+impl PublicValuesBuilder {
+    pub const FIELD_COUNT: usize = 7;
+    pub fn proposal<T>(mut self, v: T) -> Self
+    where
+        T: ::core::convert::Into<Proposal>,
+    {
+        self.proposal = v.into();
+        self
+    }
+    pub fn start_block_hash<T>(mut self, v: T) -> Self
+    where
+        T: ::core::convert::Into<Byte32>,
+    {
+        self.start_block_hash = v.into();
+        self
+    }
+    pub fn end_block_hash<T>(mut self, v: T) -> Self
+    where
+        T: ::core::convert::Into<Byte32>,
+    {
+        self.end_block_hash = v.into();
+        self
+    }
+    pub fn proposal_script<T>(mut self, v: T) -> Self
+    where
+        T: ::core::convert::Into<Script>,
+    {
+        self.proposal_script = v.into();
+        self
+    }
+    pub fn passed<T>(mut self, v: T) -> Self
+    where
+        T: ::core::convert::Into<Byte>,
+    {
+        self.passed = v.into();
+        self
+    }
+    pub fn yes_vote<T>(mut self, v: T) -> Self
+    where
+        T: ::core::convert::Into<Uint64>,
+    {
+        self.yes_vote = v.into();
+        self
+    }
+    pub fn no_vote<T>(mut self, v: T) -> Self
+    where
+        T: ::core::convert::Into<Uint64>,
+    {
+        self.no_vote = v.into();
+        self
+    }
+}
+impl molecule::prelude::Builder for PublicValuesBuilder {
+    type Entity = PublicValues;
+    const NAME: &'static str = "PublicValuesBuilder";
+    fn expected_length(&self) -> usize {
+        molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1)
+            + self.proposal.as_slice().len()
+            + self.start_block_hash.as_slice().len()
+            + self.end_block_hash.as_slice().len()
+            + self.proposal_script.as_slice().len()
+            + self.passed.as_slice().len()
+            + self.yes_vote.as_slice().len()
+            + self.no_vote.as_slice().len()
+    }
+    fn write<W: molecule::io::Write>(&self, writer: &mut W) -> molecule::io::Result<()> {
+        let mut total_size = molecule::NUMBER_SIZE * (Self::FIELD_COUNT + 1);
+        let mut offsets = Vec::with_capacity(Self::FIELD_COUNT);
+        offsets.push(total_size);
+        total_size += self.proposal.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.start_block_hash.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.end_block_hash.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.proposal_script.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.passed.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.yes_vote.as_slice().len();
+        offsets.push(total_size);
+        total_size += self.no_vote.as_slice().len();
+        writer.write_all(&molecule::pack_number(total_size as molecule::Number))?;
+        for offset in offsets.into_iter() {
+            writer.write_all(&molecule::pack_number(offset as molecule::Number))?;
+        }
+        writer.write_all(self.proposal.as_slice())?;
+        writer.write_all(self.start_block_hash.as_slice())?;
+        writer.write_all(self.end_block_hash.as_slice())?;
+        writer.write_all(self.proposal_script.as_slice())?;
+        writer.write_all(self.passed.as_slice())?;
+        writer.write_all(self.yes_vote.as_slice())?;
+        writer.write_all(self.no_vote.as_slice())?;
+        Ok(())
+    }
+    fn build(&self) -> Self::Entity {
+        let mut inner = Vec::with_capacity(self.expected_length());
+        self.write(&mut inner)
+            .unwrap_or_else(|_| panic!("{} build should be ok", Self::NAME));
+        PublicValues::new_unchecked(inner.into())
     }
 }

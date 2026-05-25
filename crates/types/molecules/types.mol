@@ -7,4 +7,27 @@ table GuestProgramArguments {
     // See `verify_block_vec` for custom verification logic applied at runtime.
     blocks: Bytes,
     witness_root: Byte32Vec,
+    proposal_script: Script,
+}
+
+// data structure used by proposal cell data
+table Proposal {
+    duration: Uint32,
+    vote_cell_code_hash: Byte32,
+    vote_cell_hash_type: byte,
+    description: Bytes,
+    receiver: Script,
+    amount: Uint64,
+    minimal_requirement: Uint64,
+}
+
+// public values output(committed) by zkVM
+table PublicValues {
+    proposal: Proposal,
+    start_block_hash: Byte32,
+    end_block_hash: Byte32,
+    proposal_script: Script,
+    passed: byte,
+    yes_vote: Uint64,
+    no_vote: Uint64,
 }

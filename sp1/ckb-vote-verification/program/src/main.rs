@@ -25,7 +25,7 @@ pub fn main() {
     let last_block = blocks.get(last_idx).expect("should exist");
     let end_hash = ckb_vote_verification::compute_header_hash(last_block.header());
 
-    let stats = ckb_vote_verification::collect_blocks_stats(blocks);
+    let stats = ckb_vote_verification::count_vote(blocks, args.proposal_script().to_entity());
 
     sp1_zkvm::io::commit(&start_hash);
     sp1_zkvm::io::commit(&end_hash);
