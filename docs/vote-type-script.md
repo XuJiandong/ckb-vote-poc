@@ -23,7 +23,7 @@ table Vote {
 }
 ```
 The `vote` field is a single byte: `0` for "NO" and `1` for "YES".
-The `amount` is the total CKB the owner holds in DAO deposits. The `dao_index` contains the indices into `cell_deps` that point to those DAO deposit cells.
+The `amount` is the total CKB the owner holds in DAO deposits, in shannon. The `dao_index` contains the indices into `cell_deps` that point to those DAO deposit cells.
 
 
 ## Witness
@@ -39,8 +39,8 @@ This script doesn't read witness.
 
 - Its lock script matches the DAO owner.
 - Its type script is the Nervos DAO, as described [here](https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0024-ckb-genesis-script-list/0024-ckb-genesis-script-list.md#nervos-dao).
-- Its index appears in `dao_index` from the cell data.
-- The sum of CKB across all matching DAO deposits equals the `amount` in the cell data.
+- Its index appears in `dao_index` from the cell data. For simplicity, `dep_group` is not supported here.
+- The total capacity in shannon across all matching DAO deposits equals the `amount` in the cell data.
 
 If no such `cell_dep` exists, the script fails.
 
@@ -52,6 +52,9 @@ When a vote cell is consumed, there is no special meaning — it simply recycles
 * A "NO" vote is generally unnecessary — users can simply do nothing. However, it can be used to retract a previous "YES" vote: later votes from the same voter overwrite earlier ones, so casting a "NO" after a "YES" effectively cancels that prior vote. This is enforced in the guest program, not by this script.
 
 * Once a proposal cell is consumed, it can no longer be referenced in `cell_deps`, which prevents new votes from being cast after the proposal closes.
+
+* the vote cells and referenced DAO deposits are not required to still be alive at settlement/proof time.
+  Vote cells may be consumed immediately after voting, while the DAO deposit must remain alive for `duration` blocks.
 
 ## Examples
 
@@ -89,7 +92,7 @@ Outputs:
     Vote_Cell
         Data: <molecule-encoded Vote>
             vote: 0x01                                  # 1 = YES
-            amount: <voter's total DAO balance in CKB>
+            amount: <voter's total DAO balance in shannon>
             dao_index: [1]                              # index 1 in cell_deps (DAO_Deposit_Cell)
         Type:
             code_hash: <vote type script code hash>
@@ -121,7 +124,7 @@ Inputs:
     Vote_Cell                                           # the previously cast vote
         Data: <molecule-encoded Vote>
             vote: 0x01                                  # 1 = YES (original vote content)
-            amount: <voter's total DAO balance in CKB>
+            amount: <voter's total DAO balance in shannon>
             dao_index: [1]
         Type:
             code_hash: <vote type script code hash>
