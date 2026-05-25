@@ -15,7 +15,7 @@ pub enum Error {
     TransactionsRootMismatch { block_index: usize },
 }
 
-fn blake2b_256(data: &[u8]) -> [u8; 32] {
+pub fn blake2b_256(data: &[u8]) -> [u8; 32] {
     #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-start: blake2b");
     let mut hasher = Blake2b256::new_customized(CKB_HASH_PERSONALIZATION);
@@ -68,7 +68,7 @@ fn header_hash(header: blockchain::HeaderReader<'_>) -> [u8; 32] {
     blake2b_256(header.as_slice())
 }
 
-fn tx_hash(tx: &blockchain::TransactionReader<'_>) -> [u8; 32] {
+pub fn tx_hash(tx: &blockchain::TransactionReader<'_>) -> [u8; 32] {
     blake2b_256(tx.raw().as_slice())
 }
 
@@ -145,7 +145,22 @@ pub fn count_vote(blocks: BlockVecReader<'_>, proposal_script: Script) -> VoteRe
             .try_into()
             .expect("Uint64 is 8 bytes"),
     );
-
+    let duration = u32::from_le_bytes(
+        proposal
+            .as_reader()
+            .duration()
+            .as_slice()
+            .try_into()
+            .expect("Uint32 is 4 bytes"),
+    ) as usize;
+    if blocks.len() != duration + 1 {
+        return VoteResult {
+            proposal,
+            yes_vote: 0,
+            no_vote: 0,
+            passed: false,
+        };
+    }
     // blake160 = first 20 bytes of blake2b_256; used to verify vote cell args
     let proposal_blake160: [u8; 20] = {
         let hash = blake2b_256(proposal_script.as_slice());

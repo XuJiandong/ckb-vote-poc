@@ -3,6 +3,7 @@ resolver = "3"
 members = [
   "crates/types",
   "crates/verification",
+  "crates/testtool",
   "tools/block-dumper",
 ]
 
