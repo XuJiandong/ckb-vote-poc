@@ -1,9 +1,11 @@
 #![no_main]
 sp1_zkvm::entrypoint!(main);
 
-use ckb_vote_types::molecules::types::{BlockVecReader, GuestProgramArgumentsReader};
-use ckb_vote_types::molecules::verify_block_vec;
-use molecule::prelude::Reader;
+use ckb_vote_types::molecules::{
+    blockchain,
+    types::{BlockVecReader, GuestProgramArgumentsReader, PublicValues},
+};
+use molecule::prelude::{Builder, Entity, Reader};
 
 pub fn main() {
     let args_bytes = sp1_zkvm::io::read_vec();
@@ -11,7 +13,8 @@ pub fn main() {
         .expect("failed to load guest program arguments");
 
     let blocks_bytes = args.blocks().raw_data();
-    verify_block_vec(blocks_bytes, false).expect("failed to verify BlockVec in molecule format");
+    ckb_vote_types::molecules::verify_block_vec(blocks_bytes, false)
+        .expect("failed to verify BlockVec in molecule format");
     let blocks = BlockVecReader::new_unchecked(blocks_bytes);
     let witness_root = args.witness_root();
 
@@ -25,13 +28,21 @@ pub fn main() {
     let last_block = blocks.get(last_idx).expect("should exist");
     let end_hash = ckb_vote_verification::compute_header_hash(last_block.header());
 
-    let stats = ckb_vote_verification::count_vote(blocks, args.proposal_script().to_entity());
+    let result = ckb_vote_verification::count_vote(blocks, args.proposal_script().to_entity());
 
-    sp1_zkvm::io::commit(&start_hash);
-    sp1_zkvm::io::commit(&end_hash);
-    sp1_zkvm::io::commit(&stats.block_count);
-    sp1_zkvm::io::commit(&stats.transaction_count);
-    sp1_zkvm::io::commit(&stats.lock_scripts);
-    sp1_zkvm::io::commit(&stats.type_scripts);
-    sp1_zkvm::io::commit(&stats.cell_deps);
+    let public_values = PublicValues::new_builder()
+        .proposal(result.proposal)
+        .start_block_hash(blockchain::Byte32::from(start_hash))
+        .end_block_hash(blockchain::Byte32::from(end_hash))
+        .proposal_script(args.proposal_script().to_entity())
+        .passed(blockchain::Byte::from(if result.passed {
+            1u8
+        } else {
+            0u8
+        }))
+        .yes_vote(blockchain::Uint64::from(result.yes_vote.to_le_bytes()))
+        .no_vote(blockchain::Uint64::from(result.no_vote.to_le_bytes()))
+        .build();
+
+    sp1_zkvm::io::commit_slice(public_values.as_slice());
 }

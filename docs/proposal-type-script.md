@@ -113,7 +113,7 @@ The verifying key in `args` is a hash of the guest program. The guest program pe
 
 - If a cell matches the vote type script, the verifier checks that its cell data contains a valid `table Vote` (see [Vote Type Script Specification](./vote-type-script.md#cell-data)). The `Vote.amount` field is recorded in a `Map` keyed by the voter's lock script hash. The `Map` allows no duplicate keys, so inserting an entry for an existing key overwrites the previous value. This means a later vote from the same voter replaces the earlier one, effectively allowing vote retraction.
 
-- Each `table Vote` carries a `dao_index`. The corresponding DAO deposit out point from `cell_deps` is added to a `Set`. If a subsequent transaction references an out point already in this `Set`, it indicates the same CKB would be counted twice; all related votes in the `Map` are then removed, preventing double-counting of DAO deposits.
+- Each `table Vote` carries a `dao_index`. The corresponding DAO deposit out points from `cell_deps` are added to a `Map2` keyed by out point, with the voter's lock script hash as the value. If a subsequent transaction spends an out point already in `Map2`, it indicates the same CKB would be counted twice; the associated voter is looked up in `Map2` and their entry is removed from both `Map2` and `Map`, preventing double-counting of DAO deposits.
 
 - After the final block is processed, the voting results are aggregated into a `Map`. The key is the lock script hash identifying each voter, and the value is the total CKB amount they hold.
 - The passing rule is not yet finalized, but a simple example would be: `sum("YES") > sum("NO") && sum("YES") + sum("NO") > minimal_requirement`.

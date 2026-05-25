@@ -2,6 +2,15 @@ import blockchain;
 
 vector BlockVec <Block>;
 
+array Uint16 [byte; 2];
+vector Uint16Vec <Uint16>;
+
+table Vote {
+    vote: byte,
+    amount: Uint64,
+    dao_index: Uint16Vec,
+}
+
 table GuestProgramArguments {
     // Note: We store block data as raw bytes instead of a `Block` vector to avoid full molecule verification overhead on this field.
     // See `verify_block_vec` for custom verification logic applied at runtime.
