@@ -9,3 +9,6 @@ native-simulator = [ "ckb-testtool/native-simulator" ]
 [dependencies]
 ckb-testtool = "1.1"
 serde_json = "1.0"
+ckb-vote-types = { path = "../crates/types" }
+ckb-hash = "1.1"
+molecule = "0.9.2"

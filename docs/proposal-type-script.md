@@ -24,17 +24,24 @@ It is not allowed to appear on both sides, to prevent updating an existing propo
 
 ## Witness
 
-When a proposal cell is created, no witness is required. The type script does not read the witness.
-When a proposal cell is consumed, a witness must be provided at the corresponding position:
+When a proposal cell is created, no witness is required. When a proposal cell is consumed, a witness must be provided at the corresponding input position:
 
 ```
 WitnessArgs:
     lock: <..>
     input_type: <..>
-    output_type: <sp1 proof>
+    output_type: <ProposalWitness>
 ```
 
-The `sp1 proof` must be an `SP1ProofWithPublicValues` data structure from the SP1 SDK. Public values can be read from this structure for further use.
+`ProposalWitness` has the following molecule structure:
+
+```
+// witness layout of proposal cell
+table ProposalWitness {
+    proof: Bytes,
+    public_values: PublicValues,
+}
+```
 
 ## Cell Data
 
@@ -241,7 +248,7 @@ Witnesses:
     WitnessArgs structure (at index matching Proposal_Cell input):
         Lock: <empty>
         Input Type: <none>
-        Output Type: SP1ProofWithPublicValues
+        Output Type: ProposalWitness
             proof: <PLONK proof bytes>
             public_values (PublicValues molecule):
                 proposal:

@@ -5,9 +5,9 @@ members = [
   "crates/verification",
   "crates/testtool",
   "tools/block-dumper",
-  "contracts/vote-type-script",
-  "contracts/proposal-type-script",
   "tests",
+  "contracts/proposal-type-script",
+  "contracts/vote-type-script",
 ]
 
 [workspace.package]

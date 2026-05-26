@@ -63,7 +63,7 @@ run:
 # test, check, clippy and fmt here are provided for completeness,
 # there is nothing wrong invoking cargo directly instead of make.
 test:
-	cargo test $(CARGO_ARGS)
+	cargo test --workspace --exclude vote-type-script --exclude proposal-type-script
 
 check:
 	cargo check $(CARGO_ARGS)

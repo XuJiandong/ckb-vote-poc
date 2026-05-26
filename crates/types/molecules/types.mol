@@ -40,3 +40,10 @@ table PublicValues {
     yes_vote: Uint64,
     no_vote: Uint64,
 }
+
+
+// witness layout of proposal cell
+table ProposalWitness {
+    proof: Bytes,
+    public_values: PublicValues,
+}
