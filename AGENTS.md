@@ -103,6 +103,12 @@ or simply
 make sp1-run
 ```
 
+## On-Chain Script (Contract) Implementation
+
+These scripts should be implemented in Rust using [ckb-std](https://github.com/nervosnetwork/ckb-std).
+When using syscalls, prefer the `high_level` API. If a high-level equivalent is unavailable, fall back to the low-level syscalls.
+Review the relevant [RFCs](https://github.com/nervosnetwork/rfcs/tree/master/rfcs) before starting implementation.
+
 ## Key dependencies
 
 - SP1 SDK: 6.1.0
