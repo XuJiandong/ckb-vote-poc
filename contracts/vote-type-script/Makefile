@@ -29,7 +29,8 @@ BUILD_DIR :=
 BINARIES := $(notdir $(shell pwd))
 
 ifeq (release,$(MODE))
-	MODE_ARGS := --release
+	CARGO_PROFILE := contract-release
+	MODE_ARGS := --profile $(CARGO_PROFILE)
 endif
 
 default: build test
@@ -41,7 +42,7 @@ build:
 	if [ "x$(BUILD_DIR)" != "x" ]; then \
 		for binary in $(BINARIES); do \
 			echo "Copying binary $$binary to build directory"; \
-			cp $(TOP)/target/riscv64imac-unknown-none-elf/$(MODE)/$$binary $(TOP)/$(BUILD_DIR); \
+			cp $(TOP)/target/riscv64imac-unknown-none-elf/$(CARGO_PROFILE)/$$binary $(TOP)/$(BUILD_DIR); \
 			cp $(TOP)/$(BUILD_DIR)/$$binary $(TOP)/$(BUILD_DIR)/$$binary.debug; \
 			$(OBJCOPY) --strip-debug --strip-all $(TOP)/$(BUILD_DIR)/$$binary; \
 		done \

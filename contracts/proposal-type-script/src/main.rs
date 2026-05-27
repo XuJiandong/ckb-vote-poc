@@ -106,14 +106,6 @@ fn run() -> Result<(), Error> {
         s
     };
 
-    PlonkVerifier::verify(
-        &proof_bytes,
-        &public_values_bytes,
-        &vk_hash_hex,
-        &sp1_verifier::PLONK_VK_BYTES,
-    )
-    .map_err(|_| Error::ProofVerifyFailed)?;
-
     let pv = proposal_witness.public_values();
 
     // proposal field must match cell data.
@@ -158,6 +150,14 @@ fn run() -> Result<(), Error> {
     if pv.as_reader().passed().as_slice()[0] != 1 {
         return Err(Error::NotPassed);
     }
+
+    PlonkVerifier::verify(
+        &proof_bytes,
+        &public_values_bytes,
+        &vk_hash_hex,
+        &sp1_verifier::PLONK_VK_BYTES,
+    )
+    .map_err(|_| Error::ProofVerifyFailed)?;
 
     Ok(())
 }

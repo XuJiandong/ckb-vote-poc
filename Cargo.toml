@@ -18,3 +18,7 @@ description = "CKB vote system based on zkVM"
 homepage = "https://github.com/nervosnetwork"
 repository = "https://github.com/nervosnetwork"
 rust-version = "1.92.0"
+
+[profile.contract-release]
+inherits = "release"
+overflow-checks = true
