@@ -105,7 +105,7 @@ async fn main() {
     } else {
         let pk = client.setup(ELF).await.unwrap();
 
-        let mut proof = client.prove(&pk, stdin).core().await.unwrap();
+        let proof = client.prove(&pk, stdin).core().await.unwrap();
 
         let pv_bytes = proof.public_values.as_slice().to_vec();
         let pv = PublicValues::from_slice(&pv_bytes).expect("invalid PublicValues");

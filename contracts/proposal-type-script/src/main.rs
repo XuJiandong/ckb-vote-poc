@@ -14,7 +14,7 @@ use ckb_std::{
     },
     type_id::check_type_id,
 };
-use ckb_vote_types::molecules::types::ProposalWitness;
+use ckb_vote_types::molecules::types::{Proposal, ProposalWitness};
 use molecule::prelude::{Entity, Reader};
 use sp1_verifier::PlonkVerifier;
 
@@ -30,6 +30,8 @@ enum Error {
     HeaderMismatch,
     ScriptMismatch,
     NotPassed,
+    MultipleProposalOutputs = 20,
+    ProposalDataInvalid,
 }
 
 pub fn program_entry() -> i8 {
@@ -43,7 +45,7 @@ fn run() -> Result<(), Error> {
     let script = load_script().map_err(|_| Error::ArgsInvalid)?;
     let args = script.args().raw_data().to_vec();
     // args must be at least 20 (Type ID) + 32 (SP1 VK hash) = 52 bytes
-    if args.len() < 52 {
+    if args.len() != 52 {
         return Err(Error::ArgsInvalid);
     }
 
@@ -66,19 +68,12 @@ fn run() -> Result<(), Error> {
     }
 
     if in_outputs {
-        // Creation: verify Type ID (first 20 bytes of args)
-        check_type_id(0, 20).map_err(|_| Error::TypeIdInvalid)?;
-        return Ok(());
+        return verify_creation(&args, script_hash);
     }
 
     // Consumption: verify SP1 PLONK proof and public values.
     // Find the input index of this script so we can load the right witness + cell data.
-    let input_index = QueryIter::new(load_cell_type_hash, Source::Input)
-        .position(|h| h == Some(script_hash))
-        .ok_or(Error::ArgsInvalid)?;
-
-    let witness =
-        load_witness_args(input_index, Source::Input).map_err(|_| Error::WitnessInvalid)?;
+    let witness = load_witness_args(0, Source::GroupInput).map_err(|_| Error::WitnessInvalid)?;
 
     let raw_witness: Vec<u8> = witness
         .output_type()
@@ -109,8 +104,7 @@ fn run() -> Result<(), Error> {
     let pv = proposal_witness.public_values();
 
     // proposal field must match cell data.
-    let cell_data =
-        load_cell_data(input_index, Source::Input).map_err(|_| Error::ProposalMismatch)?;
+    let cell_data = load_cell_data(0, Source::GroupInput).map_err(|_| Error::ProposalMismatch)?;
     if pv.as_reader().proposal().as_slice() != cell_data.as_slice() {
         return Err(Error::ProposalMismatch);
     }
@@ -159,5 +153,53 @@ fn run() -> Result<(), Error> {
     )
     .map_err(|_| Error::ProofVerifyFailed)?;
 
+    Ok(())
+}
+
+fn verify_creation(args: &[u8], script_hash: [u8; 32]) -> Result<(), Error> {
+    check_type_id(0, 20).map_err(|_| Error::TypeIdInvalid)?;
+
+    let proposal_output_count = QueryIter::new(load_cell_type_hash, Source::Output)
+        .filter(|h| *h == Some(script_hash))
+        .count();
+    if proposal_output_count != 1 {
+        return Err(Error::MultipleProposalOutputs);
+    }
+
+    let cell_data =
+        load_cell_data(0, Source::GroupOutput).map_err(|_| Error::ProposalDataInvalid)?;
+    let proposal = Proposal::from_slice(&cell_data).map_err(|_| Error::ProposalDataInvalid)?;
+
+    verify_sp1_vk_hash(&args[20..52])?;
+    verify_vote_cell_script(&proposal)?;
+    verify_duration(&proposal)?;
+    verify_amount(&proposal)?;
+    verify_minimal_requirement(&proposal)?;
+
+    Ok(())
+}
+
+fn verify_sp1_vk_hash(_vk_hash: &[u8]) -> Result<(), Error> {
+    // TODO
+    Ok(())
+}
+
+fn verify_vote_cell_script(_proposal: &Proposal) -> Result<(), Error> {
+    // TODO
+    Ok(())
+}
+
+fn verify_duration(_proposal: &Proposal) -> Result<(), Error> {
+    // TODO
+    Ok(())
+}
+
+fn verify_amount(_proposal: &Proposal) -> Result<(), Error> {
+    // TODO
+    Ok(())
+}
+
+fn verify_minimal_requirement(_proposal: &Proposal) -> Result<(), Error> {
+    // TODO
     Ok(())
 }

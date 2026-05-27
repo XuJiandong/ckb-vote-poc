@@ -41,7 +41,7 @@ This script doesn't read witness.
 
 - Its lock script matches the DAO owner.
 - Its type script is the Nervos DAO, as described [here](https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0024-ckb-genesis-script-list/0024-ckb-genesis-script-list.md#nervos-dao).
-- Its index appears in `dao_index` from the cell data. For simplicity, `dep_group` is not supported here.
+- Its index appears in `dao_index` from the cell data. For simplicity, `dep_group` is not supported here. There should be at least one element in `dao_index`.
 - The total capacity in shannon across all matching DAO deposits equals the `amount` in the cell data.
 
 If no such `cell_dep` exists, the script fails.

@@ -7,7 +7,6 @@ ckb_std::default_alloc!(16384, 1258306, 64);
 use ckb_hash::new_blake2b;
 use ckb_std::{
     ckb_constants::Source,
-    error::SysError,
     high_level::{QueryIter, load_cell_capacity, load_cell_lock, load_cell_type, load_script},
 };
 use ckb_vote_types::molecules::types::Vote;
@@ -68,22 +67,12 @@ fn run() -> Result<(), Error> {
     }
 
     // 1. Find the proposal cell in cell_deps. Its type script's blake160 must match args[0..20].
-    let mut proposal_found = false;
-    let mut i = 0usize;
-    loop {
-        match load_cell_type(i, Source::CellDep) {
-            Ok(Some(type_script)) => {
-                if blake160(type_script.as_slice()) == expected_blake160 {
-                    proposal_found = true;
-                    break;
-                }
-            }
-            Ok(None) => {}
-            Err(SysError::IndexOutOfBound) => break,
-            Err(_) => break,
-        }
-        i += 1;
-    }
+    let proposal_found = QueryIter::new(load_cell_type, Source::CellDep).any(|maybe_type_script| {
+        maybe_type_script
+            .as_ref()
+            .map(|type_script| blake160(type_script.as_slice()) == expected_blake160)
+            .unwrap_or(false)
+    });
     if !proposal_found {
         return Err(Error::ProposalNotFound);
     }
@@ -94,6 +83,10 @@ fn run() -> Result<(), Error> {
         .map_err(|_| Error::VoteDataInvalid)?;
 
     let vote = Vote::from_slice(&vote_data).map_err(|_| Error::VoteDataInvalid)?;
+    let vote_value = vote.as_reader().vote().as_slice()[0];
+    if vote_value != 0 && vote_value != 1 {
+        return Err(Error::VoteDataInvalid);
+    }
 
     // 2. Find a lock on an input that matches the vote output lock; this proves DAO ownership.
     let voter_lock_found = QueryIter::new(load_cell_lock, Source::Input)
@@ -111,9 +104,11 @@ fn run() -> Result<(), Error> {
             .try_into()
             .map_err(|_| Error::VoteDataInvalid)?,
     );
+    let mut dao_dep_count: usize = 0;
     let mut total_capacity: u64 = 0;
 
     for dao_idx_reader in vote.as_reader().dao_index().iter() {
+        dao_dep_count += 1;
         let dep_idx = u16::from_le_bytes(dao_idx_reader.as_slice().try_into().unwrap()) as usize;
 
         let dep_lock =
@@ -131,9 +126,15 @@ fn run() -> Result<(), Error> {
         if dep_type.hash_type().as_slice()[0] != DAO_HASH_TYPE {
             return Err(Error::DaoDepInvalid);
         }
+        if !dep_type.args().raw_data().is_empty() {
+            return Err(Error::DaoDepInvalid);
+        }
 
         let cap = load_cell_capacity(dep_idx, Source::CellDep).map_err(|_| Error::DaoDepInvalid)?;
         total_capacity = total_capacity.saturating_add(cap);
+    }
+    if dao_dep_count == 0 || total_capacity == 0 {
+        return Err(Error::DaoDepInvalid);
     }
 
     if total_capacity != expected_amount {

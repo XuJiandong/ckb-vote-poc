@@ -207,6 +207,82 @@ fn test_vote_type_script() {
     println!("consume cycles: {}", cycles);
 }
 
+#[test]
+fn test_vote_type_script_reject_empty_dao_index() {
+    let mut context = Context::default();
+
+    let vote_out_point = context.deploy_cell_by_name("vote-type-script");
+    let always_success_op = context.deploy_cell(ALWAYS_SUCCESS.clone());
+
+    let voter_lock = context
+        .build_script(&always_success_op, Bytes::from(vec![0x01u8]))
+        .expect("voter lock");
+
+    let proposal_type_script = context
+        .build_script(&always_success_op, Bytes::from(vec![0x02u8]))
+        .expect("proposal type script");
+    let proposal_blake160 = blake160(proposal_type_script.as_slice());
+    let vote_type_script = context
+        .build_script(&vote_out_point, Bytes::from(proposal_blake160.to_vec()))
+        .expect("vote type script");
+
+    let proposal_lock = context
+        .build_script(&always_success_op, Bytes::new())
+        .expect("proposal lock");
+    let proposal_cell_op = context.create_cell(
+        CellOutput::new_builder()
+            .capacity(1000u64)
+            .lock(proposal_lock)
+            .type_(Some(proposal_type_script).pack())
+            .build(),
+        Bytes::new(),
+    );
+    let proposal_dep = CellDep::new_builder().out_point(proposal_cell_op).build();
+
+    let input_op = context.create_cell(
+        CellOutput::new_builder()
+            .capacity(1000u64)
+            .lock(voter_lock.clone())
+            .build(),
+        Bytes::new(),
+    );
+    let input = CellInput::new_builder().previous_output(input_op).build();
+
+    let vote = Vote::new_builder()
+        .vote(MolByte::new(1))
+        .amount(MolUint64::from(0u64.to_le_bytes()))
+        .dao_index(Uint16Vec::new_builder().build())
+        .build();
+
+    let vote_output = CellOutput::new_builder()
+        .capacity(500u64)
+        .lock(voter_lock.clone())
+        .type_(Some(vote_type_script).pack())
+        .build();
+    let change_output = CellOutput::new_builder()
+        .capacity(499u64)
+        .lock(voter_lock)
+        .build();
+
+    let tx = TransactionBuilder::default()
+        .cell_dep(proposal_dep)
+        .input(input)
+        .output(vote_output)
+        .output(change_output)
+        .output_data(Bytes::from(vote.as_slice().to_vec()).pack())
+        .output_data(Bytes::new().pack())
+        .build();
+    let tx = context.complete_tx(tx);
+
+    let result = context.verify_tx(&tx, 10_000_000);
+    let err = result.expect_err("empty dao_index should fail");
+    let err_msg = format!("{err:?}");
+    assert!(
+        err_msg.contains("error code 5"),
+        "expected DaoDepInvalid (exit code 5), got: {err_msg}"
+    );
+}
+
 /// Test consuming a vote cell (recycling CKB).
 /// The vote type script should allow this unconditionally.
 #[test]

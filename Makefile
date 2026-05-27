@@ -37,6 +37,19 @@ export BUILD_DIR
 
 default: build test
 
+sp1-run:
+	cd sp1/ckb-vote-verification/script && cargo run --release -- --execute
+
+sp1-profiling:
+	cd sp1/ckb-vote-verification/script && cargo run --release --features profiling -- --execute
+
+fmt:
+	cargo fmt
+	cd sp1/ckb-vote-verification && cargo fmt
+
+prove-via-network:
+	cd sp1/ckb-vote-verification/script && RUST_LOG=info cargo run --release --bin prove-via-network
+
 build:
 	@if [ "x$(CLEAN_BUILD_DIR_FIRST)" = "xtrue" ]; then \
 		echo "Cleaning $(BUILD_DIR) directory..."; \
@@ -70,9 +83,6 @@ check:
 
 clippy:
 	cargo clippy $(CARGO_ARGS)
-
-fmt:
-	cargo fmt $(CARGO_ARGS)
 
 # Arbitrary cargo command is supported here. For example:
 #

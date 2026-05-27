@@ -72,8 +72,22 @@ Since proposal cells can be created by anyone, the fields `duration`, `vote cell
 
 
 ## Unlocking Process
+### Creation
+When a proposal cell is created (the type script is on the output side), the script must verify the following:
 
-First, the script reads `SP1ProofWithPublicValues` from the witness, in the `WitnessArgs.output_type` field, and extracts the following items:
+1. The 20-byte blake160 hash of the Type ID in `args` matches.
+2. The following fields are validated:
+   - The 32-byte SP1 verifying key hash in `args`
+   - Vote cell `code_hash` / `hash_type` in cell data
+   - `duration` in cell data
+   - `amount` in cell data
+   - `minimal_requirement` in cell data
+3. There should be only one such type script in transaction.
+
+The SP1 verifying key hash and vote cell `code_hash` / `hash_type` are updated when the guest program is compiled and the vote type script is deployed. The remaining fields are under discussion.
+
+### Consuming
+First, the script reads `ProposalWitness` from the witness, in the `WitnessArgs.output_type` field, and extracts the following items:
 - proof
 - public_values
 
