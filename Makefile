@@ -48,7 +48,7 @@ fmt:
 	cd sp1/ckb-vote-verification && cargo fmt
 
 prove-via-network:
-	cd sp1/ckb-vote-verification/script && RUST_LOG=info cargo run --release --bin prove-via-network
+	cd sp1/ckb-vote-verification/script && RUST_LOG=info cargo run --release -- --prove-via-network
 
 build:
 	@if [ "x$(CLEAN_BUILD_DIR_FIRST)" = "xtrue" ]; then \

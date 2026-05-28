@@ -26,7 +26,3 @@ sp1-build = { workspace = true }
 name = "execute"
 path = "src/main.rs"
 
-[[bin]]
-name = "prove-via-network"
-path = "src/prove-via-network.rs"
-
