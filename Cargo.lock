@@ -2092,7 +2092,7 @@ dependencies = [
  "ckb-vote-types",
  "hex",
  "molecule",
- "sp1-verifier",
+ "sp1-verifier 6.1.0 (git+https://github.com/XuJiandong/sp1.git?rev=f25435f)",
 ]
 
 [[package]]
@@ -2621,9 +2621,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp1-test"
+version = "0.1.0"
+dependencies = [
+ "ckb-std",
+ "hex",
+ "sp1-verifier 6.1.0",
+]
+
+[[package]]
 name = "sp1-verifier"
-version = "6.0.2"
-source = "git+https://github.com/XuJiandong/sp1.git?rev=0cc2b42#0cc2b42f287bbfce66973e19defb8b39fa361732"
+version = "6.1.0"
+dependencies = [
+ "blake3",
+ "ckb-alt-bn128",
+ "ckb-std",
+ "dirs",
+ "hex",
+ "sha2",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "sp1-verifier"
+version = "6.1.0"
+source = "git+https://github.com/XuJiandong/sp1.git?rev=f25435f#f25435f62a49a9d443500a21f5de8d44f83d200d"
 dependencies = [
  "blake3",
  "ckb-alt-bn128",

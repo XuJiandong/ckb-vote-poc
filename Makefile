@@ -43,6 +43,9 @@ sp1-run:
 sp1-profiling:
 	cd sp1/ckb-vote-verification/script && cargo run --release --features profiling -- --execute
 
+sp1-test:
+	ckb-debugger --bin build/release/sp1-test
+	
 fmt:
 	cargo fmt
 	cd sp1/ckb-vote-verification && cargo fmt

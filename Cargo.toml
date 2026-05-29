@@ -8,6 +8,7 @@ members = [
   "tests",
   "contracts/proposal-type-script",
   "contracts/vote-type-script",
+  "contracts/sp1-test",
 ]
 
 [workspace.package]
