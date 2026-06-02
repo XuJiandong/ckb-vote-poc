@@ -3,6 +3,11 @@
 This document explains how to use a zkVM to design and implement a voting system on CKB-VM. Any zkVM (SP1, RISC Zero, etc.) can be used;
 here we use SP1 since we have already ported the SP1 verifier to CKB-VM.
 
+In the treasury, there are two systems: a creating system and a voting system.
+The creating system mints CKB out of thin air, similar to a coinbase transaction.
+The voting system votes on and allocates the treasury created in the previous step.
+These two systems are independent and can be designed and implemented separately. This design focuses on the voting system.
+
 ## Introduction
 
 Before diving into the implementation details, let's cover some basic concepts about what a zkVM does and how it works.
@@ -82,20 +87,6 @@ Once the proposal cell is on-chain, users can cast their votes by creating vote 
 The vote cell's lock script can be anything, as users may recycle these cells immediately after voting. 
 
 See details in [Vote Type Script Specification](../vote-type-script.md).
-
-## Treasury Cell
-The treasury cell holds assets by default. When a proposal passes, anyone can generate a zkVM proof to unlock the proposal type script.
-The treasury cell is locked by a special treasury lock script, which can be unlocked when the proposal type script in the same transaction is also unlocked.
-The transaction includes treasury cells and a proposal cell, with an output cell using the `receiver` as the lock script — effectively sending funds to the receiver.
-
-The treasury lock script has the following hard-coded or configured parameters:
-
-- proposal type script `code_hash` / `hash_type`
-- verifying key of the guest program
-
-These parameters are critical to the voting system. The verifying key is tied to the guest program binary — it must be updated whenever the guest program changes. Allowing these values to be malformed or overwritten would be a serious security issue.
-
-See details in [Treasure Lock Script Specification](../treasure-lock-script.md).
 
 ## Benchmark and Optimization
 
@@ -180,12 +171,12 @@ Serious build (~$6k–10k)
 
 ## Diagrams
 
-The following diagram shows the static structure of the three core cell types and how they interact through the zkVM verifying process:
+The following diagram shows the static structure of the two core cell types and how they interact through the zkVM verifying process:
 
 ![zkVM Voting System — Cell Structures & Verification Process](./zkvm-voting.png)
 
 
-The diagram below shows the block timeline: `duration + 1` consecutive blocks (Block 0 through Block N) contain the proposal cell and vote cells, while the final transaction — which consumes the proposal cell and treasury cell — lives in a later block outside that window.
+The diagram below shows the block timeline: `duration + 1` consecutive blocks (Block 0 through Block N) contain the proposal cell and vote cells, while the final transaction — which consumes the proposal cell — lives in a later block outside that window.
 
 ![zkVM Voting — Block Timeline & Final Transaction](./zkvm-voting-blocks.png)
 

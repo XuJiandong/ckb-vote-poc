@@ -232,9 +232,6 @@ Inputs:
             args: <empty>
 
     <vec> Treasury_Cell
-        Data: <empty>
-        Type: <none>
-        Lock: <described in treasure lock script spec>
 
 Outputs:
     Receiver_Cell
