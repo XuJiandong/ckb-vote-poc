@@ -16,6 +16,7 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 ckb-vote-verification = { path = "../../../crates/verification" }
 ckb-vote-types = { path = "../../../crates/types" }
+ckb-vote-testtool = { path = "../../../crates/testtool" }
 molecule = "0.9.2"
 
 [build-dependencies]
@@ -24,8 +25,4 @@ sp1-build = { workspace = true }
 [[bin]]
 name = "execute"
 path = "src/main.rs"
-
-[[bin]]
-name = "prove-via-network"
-path = "src/prove-via-network.rs"
 

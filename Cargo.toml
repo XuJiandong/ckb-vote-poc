@@ -3,7 +3,12 @@ resolver = "3"
 members = [
   "crates/types",
   "crates/verification",
+  "crates/testtool",
   "tools/block-dumper",
+  "tests",
+  "contracts/proposal-type-script",
+  "contracts/vote-type-script",
+  "contracts/sp1-test",
 ]
 
 [workspace.package]
@@ -14,3 +19,7 @@ description = "CKB vote system based on zkVM"
 homepage = "https://github.com/nervosnetwork"
 repository = "https://github.com/nervosnetwork"
 rust-version = "1.92.0"
+
+[profile.contract-release]
+inherits = "release"
+overflow-checks = true

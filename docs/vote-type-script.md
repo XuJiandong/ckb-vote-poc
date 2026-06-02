@@ -35,11 +35,13 @@ This script doesn't read witness.
 
 2. The script then looks for a lock script on the input cells that matches the corresponding output lock script. This lock script represents ownership of the DAO.
 
-3. The script traverses all `cell_deps` to find cells that satisfy all of the following conditions:
+3. Ensure that exactly one cell in the output contains this type script. If more than one such cell is present, the script must fail.
+
+4. The script traverses all `cell_deps` to find cells that satisfy all of the following conditions:
 
 - Its lock script matches the DAO owner.
 - Its type script is the Nervos DAO, as described [here](https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0024-ckb-genesis-script-list/0024-ckb-genesis-script-list.md#nervos-dao).
-- Its index appears in `dao_index` from the cell data. For simplicity, `dep_group` is not supported here.
+- Its index appears in `dao_index` from the cell data. For simplicity, `dep_group` is not supported here. There should be at least one element in `dao_index`.
 - The total capacity in shannon across all matching DAO deposits equals the `amount` in the cell data.
 
 If no such `cell_dep` exists, the script fails.
@@ -68,7 +70,7 @@ Cell Deps:
             code_hash: <proposal type script code hash>
             hash_type: <proposal type script hash type>
             args:
-                <20-byte blake160 of prev TX> <32-byte SP1 verifying key>
+                <20-byte blake160 Type ID> <32-byte SP1 verifying key hash>
         Lock:
             <always-success lock script>
 

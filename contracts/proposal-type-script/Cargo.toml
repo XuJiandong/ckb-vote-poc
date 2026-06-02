@@ -1,0 +1,13 @@
+[package]
+name = "proposal-type-script"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ckb-std = { version = "1.1", features = ["type-id"] }
+ckb-vote-types = { path = "../../crates/types" }
+sp1-verifier = { git = "https://github.com/XuJiandong/sp1.git", default-features = false, rev = "f25435f" }
+ckb-hash = { version = "1.1", default-features = false, features = ["ckb-contract"] }
+molecule = { version = "0.9.2", default-features = false }
+hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
+

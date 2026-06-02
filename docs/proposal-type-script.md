@@ -24,17 +24,24 @@ It is not allowed to appear on both sides, to prevent updating an existing propo
 
 ## Witness
 
-When a proposal cell is created, no witness is required. The type script does not read the witness.
-When a proposal cell is consumed, a witness must be provided at the corresponding position:
+When a proposal cell is created, no witness is required. When a proposal cell is consumed, a witness must be provided at the corresponding input position:
 
 ```
 WitnessArgs:
     lock: <..>
     input_type: <..>
-    output_type: <sp1 proof>
+    output_type: <ProposalWitness>
 ```
 
-The `sp1 proof` must be an `SP1ProofWithPublicValues` data structure from the SP1 SDK. Public values can be read from this structure for further use.
+`ProposalWitness` has the following molecule structure:
+
+```
+// witness layout of proposal cell
+table ProposalWitness {
+    proof: Bytes,
+    public_values: PublicValues,
+}
+```
 
 ## Cell Data
 
@@ -46,11 +53,11 @@ It is a molecule structure as follows:
 table Proposal {
     duration: Uint32,
     vote_cell_code_hash: Byte32,
-    vote_cell_hash_type: Byte,
+    vote_cell_hash_type: byte,
     description: Bytes,
     receiver: Script,
     amount: Uint64,
-    minimal_requirement: Uint64
+    minimal_requirement: Uint64,
 }
 ```
 
@@ -65,8 +72,22 @@ Since proposal cells can be created by anyone, the fields `duration`, `vote cell
 
 
 ## Unlocking Process
+### Creation
+When a proposal cell is created (the type script is on the output side), the script must verify the following:
 
-First, the script reads `SP1ProofWithPublicValues` from the witness, in the `WitnessArgs.output_type` field, and extracts the following items:
+1. The 20-byte blake160 hash of the Type ID in `args` matches.
+2. The following fields are validated:
+   - The 32-byte SP1 verifying key hash in `args`
+   - Vote cell `code_hash` / `hash_type` in cell data
+   - `duration` in cell data
+   - `amount` in cell data
+   - `minimal_requirement` in cell data
+3. There should be only one such type script in transaction.
+
+The SP1 verifying key hash and vote cell `code_hash` / `hash_type` are updated when the guest program is compiled and the vote type script is deployed. The remaining fields are under discussion.
+
+### Consuming
+First, the script reads `ProposalWitness` from the witness, in the `WitnessArgs.output_type` field, and extracts the following items:
 - proof
 - public_values
 
@@ -85,7 +106,7 @@ table PublicValues {
     start_block_hash: Byte32,
     end_block_hash: Byte32,
     proposal_script: Script,
-    passed: Byte,
+    passed: byte,
     yes_vote: Uint64,
     no_vote: Uint64,
 }
@@ -105,7 +126,7 @@ The off-chain side generates the SP1 proof using block data as input. The on-cha
 The verifying key in `args` is a hash of the guest program. The guest program performance following tasks in zkVM:
 
 - The guest program receives, as input arguments, a sequence of block data beginning with the block containing the proposal cell. This sequence consists of exactly `duration + 1` consecutive blocks.
-- The guest program takes last argument as the proposal type script along with its corresponding cell data.
+- The guest program takes last argument as the proposal type script.
 - It reads the proposal cell from the first block and retrieves the vote cell type script. The guest program cannot choose a favorable block range: the start block hash and duration are committed as public values and verified on-chain. The end block hash is also committed to prove that the end block exists on-chain.
 - It verifies that `parent_hash` matches between adjacent blocks.
 - It verifies that the `transactions_root` field in each block matches the expected value according to the [block structure RFC](https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0027-block-structure/0027-block-structure.md). Additional verification steps can be included as needed, but are not detailed here.
@@ -113,7 +134,7 @@ The verifying key in `args` is a hash of the guest program. The guest program pe
 
 - If a cell matches the vote type script, the verifier checks that its cell data contains a valid `table Vote` (see [Vote Type Script Specification](./vote-type-script.md#cell-data)). The `Vote.amount` field is recorded in a `Map` keyed by the voter's lock script hash. The `Map` allows no duplicate keys, so inserting an entry for an existing key overwrites the previous value. This means a later vote from the same voter replaces the earlier one, effectively allowing vote retraction.
 
-- Each `table Vote` carries a `dao_index`. The corresponding DAO deposit out point from `cell_deps` is added to a `Set`. If a subsequent transaction references an out point already in this `Set`, it indicates the same CKB would be counted twice; all related votes in the `Map` are then removed, preventing double-counting of DAO deposits.
+- Each `table Vote` carries a `dao_index`. The corresponding DAO deposit out points from `cell_deps` are added to a `Map2` keyed by out point, with the voter's lock script hash as the value. If a subsequent transaction spends an out point already in `Map2`, it indicates the same CKB would be counted twice; the associated voter is looked up in `Map2` and their entry is removed from both `Map2` and `Map`, preventing double-counting of DAO deposits.
 
 - After the final block is processed, the voting results are aggregated into a `Map`. The key is the lock script hash identifying each voter, and the value is the total CKB amount they hold.
 - The passing rule is not yet finalized, but a simple example would be: `sum("YES") > sum("NO") && sum("YES") + sum("NO") > minimal_requirement`.
@@ -211,9 +232,6 @@ Inputs:
             args: <empty>
 
     <vec> Treasury_Cell
-        Data: <empty>
-        Type: <none>
-        Lock: <described in treasure lock script spec>
 
 Outputs:
     Receiver_Cell
@@ -241,7 +259,7 @@ Witnesses:
     WitnessArgs structure (at index matching Proposal_Cell input):
         Lock: <empty>
         Input Type: <none>
-        Output Type: SP1ProofWithPublicValues
+        Output Type: ProposalWitness
             proof: <PLONK proof bytes>
             public_values (PublicValues molecule):
                 proposal:
