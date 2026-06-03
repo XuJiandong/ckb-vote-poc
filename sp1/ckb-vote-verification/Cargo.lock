@@ -1667,6 +1667,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ckb-vote-testtool"
+version = "0.1.0"
+dependencies = [
+ "ckb-vote-types",
+ "ckb-vote-verification",
+ "molecule",
+]
+
+[[package]]
 name = "ckb-vote-types"
 version = "0.1.0"
 dependencies = [
@@ -1687,6 +1696,7 @@ dependencies = [
 name = "ckb-vote-verification-program"
 version = "0.1.0"
 dependencies = [
+ "ckb-vote-testtool",
  "ckb-vote-types",
  "ckb-vote-verification",
  "molecule",
@@ -1697,6 +1707,7 @@ dependencies = [
 name = "ckb-vote-verification-script"
 version = "0.1.0"
 dependencies = [
+ "ckb-vote-testtool",
  "ckb-vote-types",
  "ckb-vote-verification",
  "clap",

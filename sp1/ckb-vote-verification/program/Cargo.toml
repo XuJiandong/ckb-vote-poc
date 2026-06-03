@@ -11,4 +11,5 @@ profiling = ["ckb-vote-verification/profiling"]
 sp1-zkvm = { workspace = true }
 ckb-vote-verification = { path = "../../../crates/verification" }
 ckb-vote-types = { path = "../../../crates/types" }
+ckb-vote-testtool = { path = "../../../crates/testtool" }
 molecule = "0.9.2"
