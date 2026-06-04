@@ -465,7 +465,7 @@ fn test_proposal_type_script_consume() {
         .build();
 
     let witness = WitnessArgs::new_builder()
-        .output_type(Some(Bytes::from(proposal_witness.as_slice().to_vec())).pack())
+        .input_type(Some(Bytes::from(proposal_witness.as_slice().to_vec())).pack())
         .build();
 
     let proposal_input = CellInput::new_builder()

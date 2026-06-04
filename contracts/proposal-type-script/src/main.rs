@@ -72,11 +72,10 @@ fn run() -> Result<(), Error> {
     }
 
     // Consumption: verify SP1 PLONK proof and public values.
-    // Find the input index of this script so we can load the right witness + cell data.
     let witness = load_witness_args(0, Source::GroupInput).map_err(|_| Error::WitnessInvalid)?;
 
     let raw_witness: Vec<u8> = witness
-        .output_type()
+        .input_type()
         .to_opt()
         .ok_or(Error::WitnessInvalid)?
         .raw_data()
