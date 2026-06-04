@@ -17,11 +17,15 @@ The SP1 guest program (`program`) depends on `crates/verification` and `crates/t
 - **SP1**: `sp1/ckb-vote-verification/rust-toolchain` uses `stable` with `llvm-tools` + `rustc-dev`
 - **SP1 Guest Program**: The `sp1/ckb-vote-verification/program` is compiled targeting RISC-V for the zkVM, using a custom toolchain provided by SP1. Do not mix this environment or its build artifacts with other Rust projects. The sp1up version `cargo-prove sp1 (d454975 2026-04-11T01:51:47.829463000Z)`.
 - **on-chain scripts**: The projects in `contracts` are compiled targeting RISC-V for CKB, using stable Rust 1.92.0. Do not mix this environment or its build artifacts with other Rust projects.
-- `cargo fmt` uses edition 2024 formatting in both workspaces
 
 ## Documents
 
 The design document is at `docs/design/README.md`. The `docs/*.md` files contain specifications.
+
+- When using the CCC library, refer to `docs/knowledge/ccc.md`.
+- When using the `ckb-cli` tool, refer to `docs/knowledge/ckb-cli.md`.
+- When working with the devnet, refer to `docs/knowledge/devnet.md`.
+
 
 ## Code generation
 
@@ -30,41 +34,7 @@ The design document is at `docs/design/README.md`. The `docs/*.md` files contain
 `sp1/ckb-vote-verification/script/build.rs` builds the zkVM guest program via `sp1-build`.
 
 ## Profile Guest Program
-
-Profile `sp1/ckb-vote-verification/program` to see where zkVM cycles are spent.
-
-### Setup
-
-The `script/Cargo.toml` enables the `profiling` feature on `sp1-sdk`:
-
-```toml
-sp1-sdk = { workspace = true, features = ["profiling"] }
-```
-
-### Generate a trace
-
-```sh
-# Build the guest program
-cd sp1/ckb-vote-verification/program && cargo prove build
-
-# Execute with profiling enabled. TRACE_SAMPLE_RATE controls sampling
-# (1 in N cycles); use for larger programs to keep the trace file small.
-cd sp1/ckb-vote-verification/script \
-  && TRACE_FILE=trace.json TRACE_SAMPLE_RATE=100 RUST_LOG=info cargo run --release -- --execute
-```
-
-### Visualize
-
-Install [samply](https://github.com/mstange/samply) (`cargo install --locked samply`), then:
-
-```sh
-cd sp1/ckb-vote-verification/script && samply load trace.json
-```
-
-Open the Firefox Profiler URL it prints. The "time" axis in the profiler is actually cycle count — fewer cycles in a call frame is better.
-
-### Cycle Tracking
-Use [this](https://docs.succinct.xyz/docs/sp1/optimizing-programs/cycle-tracking)
+When profiling sp1/ckb-vote-verifier/program, See [docs/guest-program-profiling.md](docs/guest-program-profiling.md).
 
 ## Development workflow
 
