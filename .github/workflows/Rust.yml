@@ -10,23 +10,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  fmt:
-    name: Format
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check formatting
-        run: make fmt-check
-
-  test:
-    name: Test
+  ci:
+    name: CI
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install LLVM 19
         run: wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s -- 19
+      - name: Install rustfmt
+        run: rustup component add rustfmt
       - name: Add RISC-V target
         run: rustup target add riscv64imac-unknown-none-elf
       - uses: Swatinem/rust-cache@v2
+      - name: Check formatting
+        run: make fmt-check
       - name: Run tests
         run: make test
