@@ -258,8 +258,7 @@ Header Deps:
 Witnesses:
     WitnessArgs structure (at index matching Proposal_Cell input):
         Lock: <empty>
-        Input Type: <none>
-        Output Type: ProposalWitness
+        Input Type: ProposalWitness
             proof: <PLONK proof bytes>
             public_values (PublicValues molecule):
                 proposal:
@@ -280,4 +279,5 @@ Witnesses:
                     hash_type: <proposal type script hash_type>
                     args: <20-byte blake160 Type ID> <32-byte SP1 verifying key hash>
                 passed: 0x01                            # 1 = proposal passed
+    Output Type: <none>
 ```

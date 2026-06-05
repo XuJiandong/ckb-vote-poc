@@ -50,6 +50,10 @@ fmt:
 	cargo fmt
 	cd sp1/ckb-vote-verification && cargo fmt
 
+fmt-check:
+	cargo fmt --all -- --check
+	cd sp1/ckb-vote-verification && cargo fmt -- --check
+
 prove-via-network:
 	cd sp1/ckb-vote-verification/script && RUST_LOG=info cargo run --release -- --prove-via-network
 
@@ -79,7 +83,7 @@ run:
 # test, check, clippy and fmt here are provided for completeness,
 # there is nothing wrong invoking cargo directly instead of make.
 test: build
-	cargo test --workspace --exclude vote-type-script --exclude proposal-type-script
+	cargo test --workspace --exclude vote-type-script --exclude proposal-type-script --exclude sp1-test
 
 check:
 	cargo check $(CARGO_ARGS)
@@ -291,5 +295,5 @@ coverage-install:
 coverage-clean:
 	rm -rf $(COVERAGE_DIR)
 
-.PHONY: build test check clippy fmt cargo clean prepare checksum \
+.PHONY: build test check clippy fmt fmt-check cargo clean prepare checksum \
         build-sim build-sim-cov coverage-run-tests coverage coverage-html coverage-lcov coverage-install coverage-clean

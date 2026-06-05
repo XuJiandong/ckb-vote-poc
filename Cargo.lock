@@ -2092,7 +2092,7 @@ dependencies = [
  "ckb-vote-types",
  "hex",
  "molecule",
- "sp1-verifier 6.1.0 (git+https://github.com/XuJiandong/sp1.git?rev=f25435f)",
+ "sp1-verifier",
 ]
 
 [[package]]
@@ -2626,20 +2626,7 @@ version = "0.1.0"
 dependencies = [
  "ckb-std",
  "hex",
- "sp1-verifier 6.1.0",
-]
-
-[[package]]
-name = "sp1-verifier"
-version = "6.1.0"
-dependencies = [
- "blake3",
- "ckb-alt-bn128",
- "ckb-std",
- "dirs",
- "hex",
- "sha2",
- "thiserror 2.0.18",
+ "sp1-verifier",
 ]
 
 [[package]]
