@@ -11,10 +11,12 @@ The basic type script structure is as follows:
 ```text
 code_hash: <proposal type script code_hash>
 hash_type: <proposal type script hash_type>
-args: <20-byte blake160 hash of Type ID> <32-bytes SP1 verifying key hash>
+args: <blake160 Type ID, 20 bytes> <32-bytes SP1 verifying key hash>
 ```
 
-The first 20 bytes of args ensure uniqueness via the Type ID mechanism (see [Type ID implementation](https://github.com/nervosnetwork/ckb-std/blob/0a16c0ed8a6b4d8194d64420dbe309a0c23fc1b2/src/type_id.rs#L79-L85)).
+The first 20 bytes of args ensure uniqueness via the Type ID mechanism (see [Type ID implementation](https://github.com/nervosnetwork/ckb-std/blob/0a16c0ed8a6b4d8194d64420dbe309a0c23fc1b2/src/type_id.rs#L79-L85)). blake160 is computed as blake2b-32 with `ckb-default-hash` personalization, truncated to the first 20 bytes. The blake160 Type ID follows the standard Type ID construction but uses blake160 as the hash function.
+
+
 The final 32 bytes represent the [SP1 verifying key](https://docs.zkverify.io/architecture/verification_pallets/sp1), indicating which SP1 guest program should be used for zkVM proof verification.
 
 The corresponding lock script in the proposal cell should be an always-success lock script. At a later stage, this cell can be consumed by anyone who provides the SP1 proof.
@@ -29,8 +31,8 @@ When a proposal cell is created, no witness is required. When a proposal cell is
 ```
 WitnessArgs:
     lock: <..>
-    input_type: <..>
-    output_type: <ProposalWitness>
+    input_type: <ProposalWitness>
+    output_type: <..>
 ```
 
 `ProposalWitness` has the following molecule structure:
@@ -75,7 +77,7 @@ Since proposal cells can be created by anyone, the fields `duration`, `vote cell
 ### Creation
 When a proposal cell is created (the type script is on the output side), the script must verify the following:
 
-1. The 20-byte blake160 hash of the Type ID in `args` matches.
+1. The 20-byte blake160 Type ID in `args` matches.
 2. The following fields are validated:
    - The 32-byte SP1 verifying key hash in `args`
    - Vote cell `code_hash` / `hash_type` in cell data

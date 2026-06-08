@@ -75,7 +75,7 @@ The lock script of a proposal cell is always a success lock script. All access c
 The type script of a proposal cell is called the proposal type script. Its `args` are defined as:
 
 ```text
-<20-byte blake160 hash of Type ID> <32-bytes SP1 verifying key>
+<20-byte blake160 Type ID> <32-bytes SP1 verifying key>
 ```
 
 See details in [Proposal Type Script Specification](../proposal-type-script.md).
