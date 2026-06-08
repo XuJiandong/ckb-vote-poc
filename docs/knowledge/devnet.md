@@ -46,7 +46,7 @@ hash_type = "type"
 message = "0x"
 ```
 
-**3. Optional: Shorten Block Interval**
+**3. Optional: Shorten Block Interval and Others**
 
 In `specs/dev.toml`:
 
@@ -64,6 +64,12 @@ worker_type = "Dummy"
 delay_type = "Constant"
 value = 5000                       # ms, default 5000 (5s)
 ```
+
+In ckb.toml
+```
+modules = ["Net", "Pool", "Miner", "Chain", "Stats", "Subscription", "Experiment", "Debug", "RichIndexer", "Terminal"]
+```
+The modules should contain RichIndexer to allow more operations on ckb-cli, e.g. get-capacity, find scripts.
 
 **4. Start Node**
 

@@ -466,6 +466,33 @@ threshold = 2
 - **`lock`**: Lock script for output cells (default is secp256k1).
 - **`multisig_config`**: Multisig configuration if outputs use multisig lock.
 
+### Migration folder structure
+
+After deployment, the migrations folder contains one JSON file per deployment, for example:
+
+```
+{
+  "cell_recipes": [
+    {
+      "name": "vote_type_script",
+      "tx_hash": "0xd1ea1afe5d83886deaa9a4667c7a8903273bbd95522c9c6f997afdb703a12d9d",
+      "index": 0,
+      "occupied_capacity": 7682200000000,
+      "data_hash": "0x96f66e2465eb641c5c78dc6a527593ebd85ed0000ca3f27bf4a28c5daec58f15",
+      "type_id": "0x5f12cf202b50d6018eeab4e78d1f8de677fcf636b647b2f6795f66cb1f32461a"
+    }
+  ],
+  "dep_group_recipes": []
+}
+```
+
+A deployed script is referenced by its `code_hash`/`hash_type`, which maps to `<type_id>`/`"type"`. It can also be referenced as `<data_hash>`/`"data2"`, but that form is not used unless explicitly requested.
+
+The migration folder is essential for upgrading an on-chain script: it provides the existing cell's location so the upgrade transaction can consume the old cell and create a new one.
+
+Files are ordered by date annotated on file names; only the latest one reflects the current on-chain state.
+
+
 ### Note
 
 - Before v1.8.0, addresses in `sighash_addresses` must be **short** sighash addresses.
