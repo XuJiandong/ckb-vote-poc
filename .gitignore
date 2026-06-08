@@ -1,1 +1,4 @@
 build/
+deployment/devnet/always-success/info.json
+deployment/devnet/proposal-type-script/info.json
+deployment/devnet/vote-type-script/info.json

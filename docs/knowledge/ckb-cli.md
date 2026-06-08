@@ -626,3 +626,10 @@ tx add-output --to-sighash-address <dest> --capacity 19999.9999 --tx-file tx.jso
 tx sign-inputs --from-account <key> --add-signatures --tx-file tx.json
 tx send --tx-file tx.json
 ```
+
+## Configuration
+
+Set `CKB_CLI_HOME` to override the default `~/.ckb-cli` directory. Config files and keystores are stored in this folder.
+
+
+

@@ -2,11 +2,11 @@
   "cell_recipes": [
     {
       "name": "vote_type_script",
-      "tx_hash": "0xd1ea1afe5d83886deaa9a4667c7a8903273bbd95522c9c6f997afdb703a12d9d",
+      "tx_hash": "0x3d4d939bef8d45f19d38d7de163ddbf1c6ae50cbbe2d7aeace9e397fccabe691",
       "index": 0,
       "occupied_capacity": 7682200000000,
       "data_hash": "0x96f66e2465eb641c5c78dc6a527593ebd85ed0000ca3f27bf4a28c5daec58f15",
-      "type_id": "0x5f12cf202b50d6018eeab4e78d1f8de677fcf636b647b2f6795f66cb1f32461a"
+      "type_id": "0xf659306b518b6c3cc2cc7079bf8d349910821eb459534f42f17dfe392d38b2d4"
     }
   ],
   "dep_group_recipes": []

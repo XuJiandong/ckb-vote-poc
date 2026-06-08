@@ -3,12 +3,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+source "$PROJECT_ROOT/tools/e2e/env.sh"
 BINARY="$PROJECT_ROOT/build/release/proposal-type-script"
 DEPLOY_CONFIG="$SCRIPT_DIR/deployment.toml"
 MIGRATIONS_DIR="$SCRIPT_DIR/migrations"
 INFO_FILE="$SCRIPT_DIR/info.json"
-FROM_ADDRESS="ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsq0ztgvqprjguy8w6u2fz93fxgurmhw3ldceysut0"
-CKB_RPC="http://127.0.0.1:8114"
 
 if [ ! -f "$BINARY" ]; then
   echo "Error: binary not found at $BINARY" >&2
