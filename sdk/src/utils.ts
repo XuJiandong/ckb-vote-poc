@@ -12,33 +12,33 @@ export function blake160(data: ccc.BytesLike): ccc.Hex {
 }
 
 /**
- * Compute the CKB type_id (32 bytes) from the first input and output index.
- * Matches ckb-std calculate_type_id: blake2b(CellInput.as_bytes || output_index_u64_le).
+ * Compute the blake160 Type ID (20 bytes) from the first input and output index.
+ * blake160(CellInput.as_bytes || output_index_u64_le) — first 20 bytes of the
+ * blake2b-256 hash, matching the standard Type ID construction.
  */
-export function computeTypeId(
+export function computeBlake160TypeId(
   firstInput: ccc.CellInput,
   outputIndex: number,
 ): ccc.Hex {
   const indexBuf = new Uint8Array(8);
   new DataView(indexBuf.buffer).setBigUint64(0, BigInt(outputIndex), true);
-  return ccc.hashCkb(ccc.CellInput.encode(firstInput), indexBuf);
+  const hash = ccc.bytesFrom(
+    ccc.hashCkb(ccc.CellInput.encode(firstInput), indexBuf),
+  );
+  return ccc.hexFrom(hash.slice(0, 20));
 }
 
 /**
  * Compute the proposal type script args:
- *   typeId[0..20] [20 bytes] || sp1VerifyingKeyHash [32 bytes]
+ *   blake160 Type ID [20 bytes] || sp1VerifyingKeyHash [32 bytes]
  */
 export function buildProposalTypeScriptArgs(
   firstInput: ccc.CellInput,
   outputIndex: number,
   sp1VerifyingKeyHash: string,
 ): ccc.Hex {
-  const typeId = computeTypeId(firstInput, outputIndex);
-  // Leading 20 bytes of the 32-byte Type ID (40 hex chars after "0x")
-  const typeIdPrefix = typeId.slice(0, 42);
-  return ("0x" +
-    typeIdPrefix.slice(2) +
-    sp1VerifyingKeyHash.slice(2)) as ccc.Hex;
+  const typeId = computeBlake160TypeId(firstInput, outputIndex);
+  return ("0x" + typeId.slice(2) + sp1VerifyingKeyHash.slice(2)) as ccc.Hex;
 }
 
 /**

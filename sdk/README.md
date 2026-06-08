@@ -240,7 +240,7 @@ SP1 verifying key: `0x00eed8303c92b34e9bf35c4e3424436d4b9afcc38637a1633c000a90cb
 Inputs:   [signer cells]
 Outputs:  [0] Proposal cell
               lock: always-success
-              type: proposal-type-script (args = blake160(typeId) || sp1VkHash)
+              type: proposal-type-script (args = blake160 Type ID || sp1VkHash)
               data: molecule-encoded Proposal
 Cell deps: proposal-type-script contract, always-success contract
 ```

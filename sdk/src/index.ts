@@ -37,7 +37,7 @@ export type { CreateVoteParams, CreateVoteResult } from "./vote.js";
 
 export {
   blake160,
-  computeTypeId,
+  computeBlake160TypeId,
   buildProposalTypeScriptArgs,
   scriptFromInfo,
   cellDepFromInfo,
