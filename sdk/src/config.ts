@@ -76,7 +76,7 @@ export const DEVNET_CONFIG: NetworkConfig = {
 
   // From sp1/ckb-vote-verification/verifying-key.txt
   sp1VerifyingKeyHash:
-    "0x00eed8303c92b34e9bf35c4e3424436d4b9afcc38637a1633c000a90cb54bf7a",
+    "0x00469e90740aaaa13a626262b02ffe3b1434c19af72b0f8eb0c3ceec2b3228fe",
 
   feeRate: 1500n,
 

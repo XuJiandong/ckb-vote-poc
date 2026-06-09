@@ -1,1 +1,3 @@
-trace.json
+/trace.json
+/proof-plonk.bin
+/public-values.bin

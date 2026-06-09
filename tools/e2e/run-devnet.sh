@@ -37,6 +37,17 @@ poll_tx_committed() {
   return 1
 }
 
+# Fetch the hash of a block by its decimal block number.
+get_block_hash() {
+  local block_num="$1"
+  local hex_num
+  hex_num=$(printf '0x%x' "$block_num")
+  curl -s "$CKB_RPC" -X POST -H 'Content-Type: application/json' \
+    -d "{\"jsonrpc\":\"2.0\",\"method\":\"get_block_by_number\",\"params\":[\"$hex_num\"],\"id\":1}" \
+    | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['header']['hash'])" \
+    2>/dev/null
+}
+
 # Poll until the chain tip is at or beyond target_block.
 wait_for_block() {
   local target="$1"
@@ -64,17 +75,21 @@ create_output=$(cd "$SDK_DIR" && pnpm dev create-proposal \
 echo "$create_output"
 
 PROPOSAL_TX_HASH=$(echo "$create_output" | grep 'outpoint:' | sed 's/.*outpoint:[[:space:]]*//' | cut -d: -f1)
+PROPOSAL_TX_INDEX=$(echo "$create_output" | grep 'outpoint:' | sed 's/.*outpoint:[[:space:]]*//' | cut -d: -f2)
 if [[ -z "$PROPOSAL_TX_HASH" ]]; then
   echo "ERROR: failed to parse proposal tx hash from output" >&2
   exit 1
 fi
 echo ""
-echo "  proposal tx hash: $PROPOSAL_TX_HASH"
+echo "  proposal tx hash:  $PROPOSAL_TX_HASH"
+echo "  proposal tx index: $PROPOSAL_TX_INDEX"
 
 echo ""
 echo "==> Waiting for proposal TX to be committed..."
 PROPOSAL_BLOCK=$(poll_tx_committed "$PROPOSAL_TX_HASH")
 echo "  proposal committed in block $PROPOSAL_BLOCK"
+START_BLOCK_HASH=$(get_block_hash "$PROPOSAL_BLOCK")
+echo "  start block hash:  $START_BLOCK_HASH"
 END_BLOCK=$(( PROPOSAL_BLOCK + DURATION ))
 
 echo ""
@@ -88,6 +103,18 @@ echo ""
 echo "==> Waiting for voting window to close (need tip ≥ block $END_BLOCK)..."
 wait_for_block "$END_BLOCK"
 echo "  tip reached block $END_BLOCK"
+END_BLOCK_HASH=$(get_block_hash "$END_BLOCK")
+echo "  end block hash:    $END_BLOCK_HASH"
+
+INFO_FILE="$SCRIPT_DIR/info.txt"
+cat > "$INFO_FILE" <<EOF
+proposal_tx_hash=$PROPOSAL_TX_HASH
+proposal_tx_index=$PROPOSAL_TX_INDEX
+start_block_hash=$START_BLOCK_HASH
+end_block_hash=$END_BLOCK_HASH
+EOF
+echo ""
+echo "  info saved to $INFO_FILE"
 
 echo ""
 echo "==> Dumping $((DURATION + 1)) blocks to $BLOCKS_BIN..."
