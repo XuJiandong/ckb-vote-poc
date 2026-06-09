@@ -13,7 +13,8 @@
     "dev": "tsx src/cli/index.ts",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "dev:create-proposal": "tsx src/cli/index.ts create-proposal --private-key-file ../tools/e2e/pk1 --duration 3 --description \"test1\""
   },
   "dependencies": {
     "@ckb-ccc/shell": "^1.0.0",

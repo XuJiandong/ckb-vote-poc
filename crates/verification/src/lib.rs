@@ -264,7 +264,8 @@ pub fn count_vote(blocks: BlockVecReader<'_>, proposal_script: Script) -> VoteRe
         }
     }
 
-    let passed = yes_vote > no_vote && yes_vote.saturating_add(no_vote) > minimal_req;
+    // minimal_req is in CKBytes, vote is in shannon.
+    let passed = yes_vote > no_vote && yes_vote.saturating_add(no_vote) > minimal_req * 100_000_000;
 
     #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-end: count-vote");

@@ -94,7 +94,11 @@ interface RpcResponse<T> {
   error?: { code: number; message: string };
 }
 
-async function rpcCall<T>(rpcUrl: string, method: string, params: unknown[]): Promise<T> {
+async function rpcCall<T>(
+  rpcUrl: string,
+  method: string,
+  params: unknown[],
+): Promise<T> {
   const res = await fetch(rpcUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -123,14 +127,18 @@ async function checkScriptCellAlive(
       false,
     ]);
   } catch (e) {
-    fail(`${name} live cell: RPC error: ${e instanceof Error ? e.message : String(e)}`);
+    fail(
+      `${name} live cell: RPC error: ${e instanceof Error ? e.message : String(e)}`,
+    );
     return false;
   }
   if (result.status === "live") {
     ok(`${name} live cell: ${outPoint.txHash}:${outPoint.index} is alive`);
     return true;
   }
-  fail(`${name} live cell: ${outPoint.txHash}:${outPoint.index} status=${result.status}`);
+  fail(
+    `${name} live cell: ${outPoint.txHash}:${outPoint.index} status=${result.status}`,
+  );
   return false;
 }
 
@@ -245,7 +253,9 @@ export function registerCheck(program: Command): void {
         if (!checkScriptVsDeployment(name, info, deploymentDir, dir)) {
           allOk = false;
         }
-        if (!(await checkScriptCellAlive(name, info.outPoint, config.ckbRpcUrl))) {
+        if (
+          !(await checkScriptCellAlive(name, info.outPoint, config.ckbRpcUrl))
+        ) {
           allOk = false;
         }
       }

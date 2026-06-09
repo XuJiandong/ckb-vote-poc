@@ -63,10 +63,13 @@ export function registerCreateProposal(program: Command): void {
         });
 
         console.log("Proposal created successfully.");
-        console.log(`  tx hash:      ${result.txHash}`);
         console.log(
           `  outpoint:     ${result.proposalOutPoint.txHash}:${result.proposalOutPoint.index}`,
         );
+        console.log(`  duration:     ${result.duration}`);
+        console.log(`  code_hash:    ${result.proposalTypeScript.codeHash}`);
+        console.log(`  hash_type:    ${result.proposalTypeScript.hashType}`);
+        console.log(`  args:         ${result.proposalTypeScript.args}`);
       } catch (err) {
         die(err);
       }

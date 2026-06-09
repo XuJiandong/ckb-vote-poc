@@ -13,7 +13,7 @@ fn test_generate_and_count_vote() {
     let proposal = Proposal::new_builder()
         .vote_cell_code_hash(blockchain::Byte32::from([1u8; 32]))
         .vote_cell_hash_type(blockchain::Byte::new(0))
-        .minimal_requirement(blockchain::Uint64::from(100u64.to_le_bytes()))
+        .minimal_requirement(blockchain::Uint64::from(0u64.to_le_bytes()))
         .build();
 
     let args = ckb_vote_testtool::generate_from_templates(proposal, BLOCK_DATA)

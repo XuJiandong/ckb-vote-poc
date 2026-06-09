@@ -25,7 +25,7 @@ The design document is at `docs/design/README.md`. The `docs/*.md` files contain
 - When using the CCC library, refer to `docs/knowledge/ccc.md`.
 - When using the `ckb-cli` tool, refer to `docs/knowledge/ckb-cli.md`.
 - When working with the devnet, refer to `docs/knowledge/devnet.md`.
-
+- When working with CKB RPC, refer to `docs/knowledge/rpc.md`.
 
 ## Code generation
 

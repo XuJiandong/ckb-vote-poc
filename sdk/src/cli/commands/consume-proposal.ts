@@ -66,7 +66,8 @@ export function registerConsumeProposal(program: Command): void {
         });
 
         console.log("Proposal consumed successfully.");
-        console.log(`  tx hash: ${result.txHash}`);
+        console.log(`  tx hash:      ${result.txHash}`);
+        console.log(`  output index: ${result.outputIndex}`);
       } catch (err) {
         die(err);
       }

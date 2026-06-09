@@ -35,6 +35,8 @@ export interface CreateProposalResult {
   txHash: string;
   /** Outpoint of the created proposal cell */
   proposalOutPoint: { txHash: string; index: number };
+  proposalTypeScript: { codeHash: string; hashType: string; args: string };
+  duration: number;
 }
 
 /**
@@ -125,9 +127,16 @@ export async function createProposal(
   await tx.completeFeeBy(signer, config.feeRate);
   const txHash = await signer.sendTransaction(tx);
 
+  const finalTypeScript = tx.outputs[0].type!;
   return {
     txHash,
     proposalOutPoint: { txHash, index: 0 },
+    proposalTypeScript: {
+      codeHash: finalTypeScript.codeHash,
+      hashType: finalTypeScript.hashType,
+      args: finalTypeScript.args,
+    },
+    duration: params.duration,
   };
 }
 
@@ -166,6 +175,8 @@ export interface ConsumeProposalParams {
 
 export interface ConsumeProposalResult {
   txHash: string;
+  /** Output index of the payment cell in the consume transaction */
+  outputIndex: number;
 }
 
 /**
@@ -235,7 +246,8 @@ export async function consumeProposal(
   await tx.completeFeeBy(signer, config.feeRate);
 
   const txHash = await signer.sendTransaction(tx);
-  return { txHash };
+
+  return { txHash, outputIndex: 0 };
 }
 
 // ─── Query helpers ────────────────────────────────────────────────────────────

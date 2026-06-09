@@ -5,6 +5,7 @@ import { registerCreateProposal } from "./commands/create-proposal.js";
 import { registerConsumeProposal } from "./commands/consume-proposal.js";
 import { registerVote } from "./commands/vote.js";
 import { registerCheck } from "./commands/check.js";
+import { registerDumpBlocks } from "./commands/dump-blocks.js";
 
 const program = new Command();
 
@@ -17,6 +18,7 @@ registerCreateProposal(program);
 registerConsumeProposal(program);
 registerVote(program);
 registerCheck(program);
+registerDumpBlocks(program);
 
 program.parseAsync(process.argv).catch((err: unknown) => {
   console.error(err instanceof Error ? err.message : String(err));

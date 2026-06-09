@@ -50,7 +50,6 @@ export function registerVote(program: Command): void {
         });
 
         console.log(`Vote (${choice}) submitted successfully.`);
-        console.log(`  tx hash:    ${result.txHash}`);
         console.log(
           `  vote cell:  ${result.voteOutPoint.txHash}:${result.voteOutPoint.index}`,
         );
