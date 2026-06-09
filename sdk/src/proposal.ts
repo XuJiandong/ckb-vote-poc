@@ -26,8 +26,8 @@ export interface CreateProposalParams {
   receiver?: string;
   /** amount in shannon; defaults to 0n */
   amount?: bigint;
-  /** minimal_requirement in shannon; defaults to 0n */
-  minimalRequirement?: bigint;
+  /** minimal_requirement in CKB; defaults to 0 */
+  minimalRequirement?: number;
   config?: Partial<NetworkConfig>;
 }
 
@@ -54,7 +54,7 @@ export async function createProposal(
   const client = signer.client;
 
   const amount = params.amount ?? 0n;
-  const minimalRequirement = params.minimalRequirement ?? 0n;
+  const minimalRequirement = BigInt(params.minimalRequirement ?? 0);
 
   // Resolve receiver lock script
   let receiverLock: ccc.Script;

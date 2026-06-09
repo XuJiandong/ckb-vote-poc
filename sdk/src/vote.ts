@@ -20,6 +20,8 @@ export interface CreateVoteResult {
   txHash: string;
   /** Outpoint of the created vote cell */
   voteOutPoint: { txHash: string; index: number };
+  /** Total DAO capacity voted, in shannons */
+  capacityVoted: bigint;
 }
 
 /**
@@ -142,6 +144,7 @@ export async function createVote(
   return {
     txHash,
     voteOutPoint: { txHash, index: 0 },
+    capacityVoted: totalDaoCapacity,
   };
 }
 

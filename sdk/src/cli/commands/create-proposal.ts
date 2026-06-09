@@ -30,13 +30,15 @@ export function registerCreateProposal(program: Command): void {
     )
     .option(
       "--amount <ckb>",
-      "Amount (in CKB) to transfer when proposal passes (defaults to 0)",
+      "Amount (in CKB) to transfer when proposal passes (defaults to 500)",
       parseFloat,
+      500,
     )
     .option(
       "--minimal-requirement <ckb>",
-      "Minimum total CKB vote weight required for proposal to pass (defaults to 0)",
+      "Minimum total CKB vote weight required for proposal to pass (defaults to 10000)",
       parseFloat,
+      10000
     )
     .option("--rpc-url <url>", "CKB RPC endpoint", DEFAULT_RPC_URL)
     .action(async (opts) => {
@@ -48,17 +50,12 @@ export function registerCreateProposal(program: Command): void {
           opts.amount !== undefined
             ? BigInt(Math.round(opts.amount * 1e8))
             : 0n;
-        const minReqShannon =
-          opts.minimalRequirement !== undefined
-            ? BigInt(Math.round(opts.minimalRequirement * 1e8))
-            : 0n;
-
         const result = await createProposal(signer, {
           duration: opts.duration,
           description: opts.description,
           receiver: opts.receiver,
           amount: amountShannon,
-          minimalRequirement: minReqShannon,
+          minimalRequirement: opts.minimalRequirement,
           config,
         });
 

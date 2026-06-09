@@ -1,6 +1,6 @@
 use ckb_vote_types::molecules::{
     blockchain,
-    types::{BlockVec, Proposal, PublicValues},
+    types::{BlockVec, GuestProgramArguments, Proposal, PublicValues},
 };
 use clap::Parser;
 use molecule::prelude::{Builder, Entity};
@@ -61,7 +61,7 @@ fn find_proposal_in_first_block(
     block_data: &[u8],
     tx_hash_hex: &str,
     output_index: u32,
-) -> Proposal {
+) -> (Proposal, blockchain::Script) {
     let tx_hash_bytes: [u8; 32] = hex::decode(tx_hash_hex.trim_start_matches("0x"))
         .unwrap_or_else(|e| {
             eprintln!("Error: invalid --proposal-tx-hash: {e}");
@@ -87,6 +87,18 @@ fn find_proposal_in_first_block(
         let tx = txs.get(i).unwrap();
         let hash = ckb_vote_verification::tx_hash(&tx.as_reader());
         if hash == tx_hash_bytes {
+            let output = tx
+                .raw()
+                .outputs()
+                .get(output_index as usize)
+                .unwrap_or_else(|| {
+                    eprintln!("Error: --proposal-index {output_index} out of range");
+                    std::process::exit(1);
+                });
+            let type_script = output.type_().to_opt().unwrap_or_else(|| {
+                eprintln!("Error: proposal cell at index {output_index} has no type script");
+                std::process::exit(1);
+            });
             let data = tx
                 .raw()
                 .outputs_data()
@@ -95,10 +107,11 @@ fn find_proposal_in_first_block(
                     eprintln!("Error: --proposal-index {output_index} out of range");
                     std::process::exit(1);
                 });
-            return Proposal::from_slice(&data.raw_data()).unwrap_or_else(|e| {
+            let proposal = Proposal::from_slice(&data.raw_data()).unwrap_or_else(|e| {
                 eprintln!("Error: failed to parse Proposal from cell data: {e}");
                 std::process::exit(1);
             });
+            return (proposal, type_script);
         }
     }
 
@@ -106,7 +119,19 @@ fn find_proposal_in_first_block(
     std::process::exit(1);
 }
 
-fn prepare_stdin(block_data: &[u8], proposal: Proposal) -> SP1Stdin {
+fn prepare_stdin_real(block_data: &[u8], proposal_script: blockchain::Script) -> SP1Stdin {
+    let base_args = ckb_vote_verification::prepare_guest_program_arguments(block_data);
+    let guest_args = GuestProgramArguments::new_builder()
+        .blocks(base_args.blocks())
+        .witness_root(base_args.witness_root())
+        .proposal_script(proposal_script)
+        .build();
+    let mut stdin = SP1Stdin::new();
+    stdin.write_vec(guest_args.as_slice().to_vec());
+    stdin
+}
+
+fn prepare_stdin_mock(block_data: &[u8], proposal: Proposal) -> SP1Stdin {
     let guest_args = ckb_vote_testtool::generate_from_templates(proposal, block_data)
         .expect("generate_from_templates");
     let mut stdin = SP1Stdin::new();
@@ -132,12 +157,12 @@ fn print_public_values(pv_bytes: &[u8]) {
         hex::encode(pv.end_block_hash().raw_data())
     );
     println!(
-        "yes_vote:          {}",
-        u64::from_le_bytes(pv.yes_vote().raw_data().try_into().unwrap())
+        "yes_vote:          {} (CKB)",
+        u64::from_le_bytes(pv.yes_vote().raw_data().try_into().unwrap()) / 100000000
     );
     println!(
-        "no_vote:           {}",
-        u64::from_le_bytes(pv.no_vote().raw_data().try_into().unwrap())
+        "no_vote:           {} (CKB)",
+        u64::from_le_bytes(pv.no_vote().raw_data().try_into().unwrap()) / 100000000
     );
     println!("passed:            {}", u8::from(pv.passed()) != 0);
 }
@@ -170,8 +195,8 @@ async fn main() {
         std::process::exit(1);
     });
 
-    let proposal = if cli.mock {
-        sample_proposal()
+    let stdin = if cli.mock {
+        prepare_stdin_mock(&block_data, sample_proposal())
     } else {
         let tx_hash = cli.proposal_tx_hash.as_deref().unwrap_or_else(|| {
             eprintln!("Error: --proposal-tx-hash is required when --mock is not set");
@@ -181,10 +206,9 @@ async fn main() {
             eprintln!("Error: --proposal-index is required when --mock is not set");
             std::process::exit(1);
         });
-        find_proposal_in_first_block(&block_data, tx_hash, index)
+        let (_, proposal_script) = find_proposal_in_first_block(&block_data, tx_hash, index);
+        prepare_stdin_real(&block_data, proposal_script)
     };
-
-    let stdin = prepare_stdin(&block_data, proposal);
 
     if cli.execute {
         run_execute(stdin).await;

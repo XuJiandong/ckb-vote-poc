@@ -49,10 +49,12 @@ export function registerVote(program: Command): void {
           config,
         });
 
+        const ckbVoted = Number(result.capacityVoted) / 1e8;
         console.log(`Vote (${choice}) submitted successfully.`);
         console.log(
           `  vote cell:  ${result.voteOutPoint.txHash}:${result.voteOutPoint.index}`,
         );
+        console.log(`  capacity voted: ${ckbVoted} CKB`);
       } catch (err) {
         die(err);
       }
