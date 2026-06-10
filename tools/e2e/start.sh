@@ -9,6 +9,11 @@ echo "ckb-cli: $(which ckb-cli)"
 ckb --version
 ckb-cli --version
 
+if pgrep -f "ckb miner" > /dev/null 2>&1; then
+  echo "WARNING: A 'ckb miner' process is already running. Please stop it before starting a new one."
+  exit 1
+fi
+
 ckb miner -C "$DEVNET_DIR" >/dev/null 2>&1 &
 
 exec ckb run -C "$DEVNET_DIR"

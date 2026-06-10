@@ -250,30 +250,6 @@ export async function consumeProposal(
   return { txHash, outputIndex: 0 };
 }
 
-// ─── Query helpers ────────────────────────────────────────────────────────────
-
-/**
- * Find all live proposal cells on chain by scanning for cells with the
- * proposal type script code_hash.
- */
-export async function* findProposalCells(
-  client: ccc.Client,
-  config: NetworkConfig = DEVNET_CONFIG,
-): AsyncGenerator<ccc.Cell> {
-  const typeScript = scriptFromInfo(config.proposalTypeScript);
-  // Search by type script prefix (code_hash + hash_type only, any args)
-  for await (const cell of client.findCellsByType(
-    ccc.Script.from({
-      codeHash: typeScript.codeHash,
-      hashType: typeScript.hashType,
-      args: "0x",
-    }),
-    true,
-  )) {
-    yield cell;
-  }
-}
-
 /**
  * Build a NetworkConfig that overrides only the RPC URL, keeping all other
  * devnet defaults. Useful when talking to testnet/mainnet with the same scripts.

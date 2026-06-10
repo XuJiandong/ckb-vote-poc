@@ -38,7 +38,7 @@ export function registerCreateProposal(program: Command): void {
       "--minimal-requirement <ckb>",
       "Minimum total CKB vote weight required for proposal to pass (defaults to 10000)",
       parseFloat,
-      10000
+      10000,
     )
     .option("--rpc-url <url>", "CKB RPC endpoint", DEFAULT_RPC_URL)
     .action(async (opts) => {

@@ -1,15 +1,47 @@
 # CKB Vote PoC — Agent Instructions
 
-## Project overview
+## Project Structure
+
+```
+ckb-vote-poc/
+├── contracts/          # On-chain CKB scripts (compiled to RISC-V for CKB VM)
+│   ├── proposal-type-script/   # Type script enforcing proposal cell rules
+│   ├── vote-type-script/       # Type script enforcing vote cell rules
+│   └── sp1-test/               # Minimal script for testing SP1 proof verification on-chain
+├── crates/             # Shared Rust library crates (root workspace)
+│   ├── types/          # Molecule-generated types and hand-written type wrappers
+│   ├── verification/   # Core vote-verification logic (shared by sp1 program and host)
+│   └── testtool/       # Test helpers for on-chain script integration tests
+├── sp1/                # SP1 zkVM workspace
+│   └── ckb-vote-verification/
+│       ├── program/    # Guest program executed inside the zkVM (RISC-V/SP1 target)
+│       └── script/     # Host script: builds the guest ELF, generates/verifies proofs
+├── sdk/                # TypeScript SDK and CLI for interacting with on-chain contracts
+│   └── src/
+│       ├── cli/        # CLI commands (propose, vote, tally, …)
+│       └── *.ts        # SDK modules: vote, proposal, codec, config, utils
+├── tests/              # Integration tests for on-chain scripts (uses crates/testtool)
+├── tools/              # Developer utilities
+│   ├── block-dumper/   # Rust binary: dumps CKB blocks to JSON for offline use
+│   ├── e2e/            # End-to-end shell scripts for manual devnet testing
+│   └── fetch-proofs/   # Python scripts for fetching and inspecting SP1 proofs
+├── docs/               # Design documents and knowledge base
+│   ├── design/         # Architecture and design decisions
+│   └── knowledge/      # How-to references (CCC, ckb-cli, devnet, RPC)
+├── devnet/             # Local CKB devnet runtime data and chain specs
+├── deployment/         # Deployment configs and cell descriptors for devnet scripts
+├── scripts/            # Build helper scripts (clang discovery, reproducible Docker build)
+└── build/              # Compiled contract binaries (output of `make build-contracts`)
+```
+
+## Cargo Workspaces
 
 CKB vote verification system using SP1 zkVM. Two Cargo workspaces:
 
-| Workspace | Location | Edition | Resolver | Members |
-|-----------|----------|---------|----------|---------|
-| Root | `./Cargo.toml` | 2024 | 3 | `crates/types`, `crates/verification`, `tools/block-dumper` |
-| SP1 | `sp1/ckb-vote-verification/Cargo.toml` | 2024 | 3 | `program`, `script` |
-
-The SP1 guest program (`program`) depends on `crates/verification` and `crates/types` via path dependency.
+| Workspace | Location | Members |
+|-----------|----------|---------|
+| Root | `./Cargo.toml` | `crates/types`, `crates/verification`, `tools/block-dumper` |
+| SP1 | `sp1/ckb-vote-verification/Cargo.toml` | `program`, `script` |
 
 ## Toolchains
 
@@ -27,7 +59,7 @@ The design document is at `docs/design/README.md`. The `docs/*.md` files contain
 - When working with the devnet, refer to `docs/knowledge/devnet.md`.
 - When working with CKB RPC, refer to `docs/knowledge/rpc.md`.
 
-## Code generation
+## Molecule Code generation
 
 `crates/types/build.rs` generates Rust code from `.mol` schema files (in `crates/types/molecules/`) using `molecule-codegen`. The generated code lives in `crates/types/src/molecules/`.
 
@@ -64,9 +96,6 @@ These scripts should be implemented in Rust using [ckb-std](https://github.com/n
 When using syscalls, prefer the `high_level` API. If a high-level equivalent is unavailable, fall back to the low-level syscalls.
 Review the relevant [RFCs](https://github.com/nervosnetwork/rfcs/tree/master/rfcs) before starting implementation.
 
-## Key dependencies
+## e2e Tests
 
-- SP1 SDK: 6.1.0
-- molecule: 0.9.2 (for CKB data structure serialization)
-- ckb-gen-types: 1.1.0
-- ckb-hash: 1.1.0
+refer to tools/e2e/README.md

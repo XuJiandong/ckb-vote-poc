@@ -8,6 +8,7 @@ import {
   getRequiredCell,
   getSignerLock,
   mergeConfig,
+  scriptFromInfo,
 } from "./utils.js";
 
 export interface CreateVoteParams {

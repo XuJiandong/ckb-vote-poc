@@ -22,7 +22,6 @@ export type {
 export {
   createProposal,
   consumeProposal,
-  findProposalCells,
   configWithRpcUrl,
 } from "./proposal.js";
 export type {
