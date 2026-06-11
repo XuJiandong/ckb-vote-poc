@@ -1,6 +1,6 @@
 use ckb_vote_types::molecules::{
     blockchain,
-    types::{Proposal, PublicValues},
+    types::{BlockVec, GuestProgramArguments, Proposal, PublicValues},
 };
 use clap::Parser;
 use molecule::prelude::{Builder, Entity};
@@ -8,13 +8,13 @@ use sp1_sdk::{
     HashableKey, ProveRequest, Prover, ProverClient, ProvingKey, SP1Stdin, include_elf,
     network::NetworkMode, utils,
 };
+use std::path::PathBuf;
 
 const ELF: sp1_sdk::Elf = include_elf!("ckb-vote-verification-program");
 const VERIFYING_KEY_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../verifying-key.txt");
 const PROOF_OUTPUT: &str = "proof-plonk.bin";
 const PUBLIC_VALUES_OUTPUT: &str = "public-values.bin";
-
-const BLOCK_DATA: &[u8] = include_bytes!("../../../../crates/verification/tests/blocks.bin");
+const DEFAULT_OUTPUT_DIR: &str = ".";
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -27,18 +27,112 @@ struct Args {
 
     #[arg(long)]
     prove_via_network: bool,
+
+    /// Use a hardcoded sample proposal instead of reading from block data
+    #[arg(long)]
+    mock: bool,
+
+    /// Path to a file containing block data
+    #[arg(long)]
+    input: PathBuf,
+
+    /// Output folder for proof-plonk.bin and public-values.bin (only used with --prove-via-network)
+    #[arg(long, default_value = DEFAULT_OUTPUT_DIR)]
+    output: PathBuf,
+
+    /// Transaction hash of the proposal cell in the first block (required without --mock)
+    #[arg(long)]
+    proposal_tx_hash: Option<String>,
+
+    /// Output index of the proposal cell (required without --mock)
+    #[arg(long)]
+    proposal_index: Option<u32>,
 }
 
 fn sample_proposal() -> Proposal {
     Proposal::new_builder()
         .vote_cell_code_hash(blockchain::Byte32::from([1u8; 32]))
         .vote_cell_hash_type(blockchain::Byte::new(0))
-        .minimal_requirement(blockchain::Uint64::from(100u64.to_le_bytes()))
+        .minimal_requirement(blockchain::Uint64::from(0u64.to_le_bytes()))
         .build()
 }
 
-fn prepare_stdin() -> SP1Stdin {
-    let guest_args = ckb_vote_testtool::generate_from_templates(sample_proposal(), BLOCK_DATA)
+fn find_proposal_in_first_block(
+    block_data: &[u8],
+    tx_hash_hex: &str,
+    output_index: u32,
+) -> (Proposal, blockchain::Script) {
+    let tx_hash_bytes: [u8; 32] = hex::decode(tx_hash_hex.trim_start_matches("0x"))
+        .unwrap_or_else(|e| {
+            eprintln!("Error: invalid --proposal-tx-hash: {e}");
+            std::process::exit(1);
+        })
+        .try_into()
+        .unwrap_or_else(|_| {
+            eprintln!("Error: --proposal-tx-hash must be 32 bytes (64 hex chars)");
+            std::process::exit(1);
+        });
+
+    let block_vec = BlockVec::from_compatible_slice(block_data).unwrap_or_else(|e| {
+        eprintln!("Error: invalid block data: {e}");
+        std::process::exit(1);
+    });
+    let first_block = block_vec.get(0).unwrap_or_else(|| {
+        eprintln!("Error: block data contains no blocks");
+        std::process::exit(1);
+    });
+
+    let txs = first_block.transactions();
+    for i in 0..txs.len() {
+        let tx = txs.get(i).unwrap();
+        let hash = ckb_vote_verification::tx_hash(&tx.as_reader());
+        if hash == tx_hash_bytes {
+            let output = tx
+                .raw()
+                .outputs()
+                .get(output_index as usize)
+                .unwrap_or_else(|| {
+                    eprintln!("Error: --proposal-index {output_index} out of range");
+                    std::process::exit(1);
+                });
+            let type_script = output.type_().to_opt().unwrap_or_else(|| {
+                eprintln!("Error: proposal cell at index {output_index} has no type script");
+                std::process::exit(1);
+            });
+            let data = tx
+                .raw()
+                .outputs_data()
+                .get(output_index as usize)
+                .unwrap_or_else(|| {
+                    eprintln!("Error: --proposal-index {output_index} out of range");
+                    std::process::exit(1);
+                });
+            let proposal = Proposal::from_slice(&data.raw_data()).unwrap_or_else(|e| {
+                eprintln!("Error: failed to parse Proposal from cell data: {e}");
+                std::process::exit(1);
+            });
+            return (proposal, type_script);
+        }
+    }
+
+    eprintln!("Error: transaction not found in first block: {tx_hash_hex}");
+    std::process::exit(1);
+}
+
+fn prepare_stdin_real(block_data: &[u8], proposal_script: blockchain::Script) -> SP1Stdin {
+    let base_args = ckb_vote_verification::prepare_guest_program_arguments(block_data);
+    let guest_args = GuestProgramArguments::new_builder()
+        .blocks(base_args.blocks())
+        .witness_root(base_args.witness_root())
+        .proposal_script(proposal_script)
+        .build();
+    let mut stdin = SP1Stdin::new();
+    stdin.write_vec(guest_args.as_slice().to_vec());
+    stdin
+}
+
+fn prepare_stdin_mock(block_data: &[u8], proposal: Proposal) -> SP1Stdin {
+    let guest_args = ckb_vote_testtool::generate_from_templates(proposal, block_data)
         .expect("generate_from_templates");
     let mut stdin = SP1Stdin::new();
     stdin.write_vec(guest_args.as_slice().to_vec());
@@ -63,12 +157,12 @@ fn print_public_values(pv_bytes: &[u8]) {
         hex::encode(pv.end_block_hash().raw_data())
     );
     println!(
-        "yes_vote:          {}",
-        u64::from_le_bytes(pv.yes_vote().raw_data().try_into().unwrap())
+        "yes_vote:          {} (CKB)",
+        u64::from_le_bytes(pv.yes_vote().raw_data().try_into().unwrap()) / 100000000
     );
     println!(
-        "no_vote:           {}",
-        u64::from_le_bytes(pv.no_vote().raw_data().try_into().unwrap())
+        "no_vote:           {} (CKB)",
+        u64::from_le_bytes(pv.no_vote().raw_data().try_into().unwrap()) / 100000000
     );
     println!("passed:            {}", u8::from(pv.passed()) != 0);
 }
@@ -93,14 +187,35 @@ async fn main() {
         std::process::exit(1);
     }
 
-    let stdin = prepare_stdin();
+    let block_data = std::fs::read(&cli.input).unwrap_or_else(|e| {
+        eprintln!(
+            "Error: failed to read input file {}: {e}",
+            cli.input.display()
+        );
+        std::process::exit(1);
+    });
+
+    let stdin = if cli.mock {
+        prepare_stdin_mock(&block_data, sample_proposal())
+    } else {
+        let tx_hash = cli.proposal_tx_hash.as_deref().unwrap_or_else(|| {
+            eprintln!("Error: --proposal-tx-hash is required when --mock is not set");
+            std::process::exit(1);
+        });
+        let index = cli.proposal_index.unwrap_or_else(|| {
+            eprintln!("Error: --proposal-index is required when --mock is not set");
+            std::process::exit(1);
+        });
+        let (_, proposal_script) = find_proposal_in_first_block(&block_data, tx_hash, index);
+        prepare_stdin_real(&block_data, proposal_script)
+    };
 
     if cli.execute {
         run_execute(stdin).await;
     } else if cli.prove {
         run_prove(stdin).await;
     } else {
-        run_prove_via_network(stdin).await;
+        run_prove_via_network(stdin, &cli.output).await;
     }
 }
 
@@ -164,7 +279,7 @@ async fn run_prove(stdin: SP1Stdin) {
     println!("successfully generated and verified proof!");
 }
 
-async fn run_prove_via_network(stdin: SP1Stdin) {
+async fn run_prove_via_network(stdin: SP1Stdin, output_dir: &PathBuf) {
     // NETWORK_PRIVATE_KEY env var must be set to your requester account's private key.
     let client = ProverClient::builder()
         .network_for(NetworkMode::Mainnet)
@@ -184,8 +299,10 @@ async fn run_prove_via_network(stdin: SP1Stdin) {
         .expect("verification failed");
     assert_passed(&pv_bytes);
 
-    std::fs::write(PROOF_OUTPUT, proof.bytes()).expect("failed to save proof");
-    std::fs::write(PUBLIC_VALUES_OUTPUT, &pv_bytes).expect("failed to save public values");
-    println!("proof saved to {PROOF_OUTPUT}");
-    println!("public values saved to {PUBLIC_VALUES_OUTPUT}");
+    let proof_path = output_dir.join(PROOF_OUTPUT);
+    let pv_path = output_dir.join(PUBLIC_VALUES_OUTPUT);
+    std::fs::write(&proof_path, proof.bytes()).expect("failed to save proof");
+    std::fs::write(&pv_path, &pv_bytes).expect("failed to save public values");
+    println!("proof saved to {}", proof_path.display());
+    println!("public values saved to {}", pv_path.display());
 }

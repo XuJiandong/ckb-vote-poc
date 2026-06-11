@@ -4,7 +4,6 @@ members = [
   "crates/types",
   "crates/verification",
   "crates/testtool",
-  "tools/block-dumper",
   "tests",
   "contracts/proposal-type-script",
   "contracts/vote-type-script",

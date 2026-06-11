@@ -126,6 +126,10 @@ pub fn count_vote(blocks: BlockVecReader<'_>, proposal_script: Script) -> VoteRe
     let proposal = match find_proposal(blocks, &proposal_script) {
         Some(p) => p,
         None => {
+            println!(
+                "Vote failed: proposal not found in the first block (proposal_script code_hash={:02x?})",
+                proposal_script.as_reader().code_hash().as_slice()
+            );
             return VoteResult {
                 proposal: Proposal::default(),
                 yes_vote: 0,
@@ -154,6 +158,12 @@ pub fn count_vote(blocks: BlockVecReader<'_>, proposal_script: Script) -> VoteRe
             .expect("Uint32 is 4 bytes"),
     ) as usize;
     if blocks.len() != duration + 1 {
+        println!(
+            "Vote failed: block count mismatch (expected {} = duration({}) + 1, got {})",
+            duration + 1,
+            duration,
+            blocks.len()
+        );
         return VoteResult {
             proposal,
             yes_vote: 0,
@@ -264,7 +274,24 @@ pub fn count_vote(blocks: BlockVecReader<'_>, proposal_script: Script) -> VoteRe
         }
     }
 
-    let passed = yes_vote > no_vote && yes_vote.saturating_add(no_vote) > minimal_req;
+    // minimal_req is in CKBytes, vote is in shannon.
+    let total_vote = yes_vote.saturating_add(no_vote);
+    let min_shannon = minimal_req * 100_000_000;
+    let passed = yes_vote > no_vote && total_vote > min_shannon;
+    if !passed {
+        if yes_vote <= no_vote {
+            println!(
+                "Vote failed: yes_vote ({}) did not exceed no_vote ({})",
+                yes_vote, no_vote
+            );
+        }
+        if total_vote <= min_shannon {
+            println!(
+                "Vote failed: total vote ({} shannon) did not meet minimal requirement ({} CKBytes = {} shannon)",
+                total_vote, minimal_req, min_shannon
+            );
+        }
+    }
 
     #[cfg(feature = "profiling")]
     println!("cycle-tracker-report-end: count-vote");

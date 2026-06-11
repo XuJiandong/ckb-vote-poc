@@ -38,10 +38,10 @@ export BUILD_DIR
 default: build test
 
 sp1-run:
-	cd sp1/ckb-vote-verification/script && cargo run --release -- --execute
+	cd sp1/ckb-vote-verification/script && cargo run --release -- --execute --mock --input ../../../crates/verification/tests/blocks.bin
 
 sp1-profiling:
-	cd sp1/ckb-vote-verification/script && cargo run --release --features profiling -- --execute
+	cd sp1/ckb-vote-verification/script && cargo run --release --features profiling -- --execute --mock --input ../../../crates/verification/tests/blocks.bin
 
 sp1-test:
 	ckb-debugger --bin build/release/sp1-test
