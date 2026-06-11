@@ -25,7 +25,7 @@ export function registerConsumeProposal(program: Command): void {
     .option(
       "--proposal-index <n>",
       "Output index of the proposal cell",
-      parseInt,
+      (v) => parseInt(v, 10),
       0,
     )
     .requiredOption(

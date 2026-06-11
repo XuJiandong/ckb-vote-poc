@@ -25,7 +25,7 @@ export function registerVote(program: Command): void {
     .option(
       "--proposal-index <n>",
       "Output index of the proposal cell",
-      parseInt,
+      (v) => parseInt(v, 10),
       0,
     )
     .requiredOption("--vote <choice>", "Vote choice: yes or no")
@@ -69,7 +69,12 @@ export function registerVote(program: Command): void {
       "Path to file containing hex private key",
     )
     .requiredOption("--vote-tx-hash <hex>", "Transaction hash of the vote cell")
-    .option("--vote-index <n>", "Output index of the vote cell", parseInt, 0)
+    .option(
+      "--vote-index <n>",
+      "Output index of the vote cell",
+      (v) => parseInt(v, 10),
+      0,
+    )
     .option("--rpc-url <url>", "CKB RPC endpoint", DEFAULT_RPC_URL)
     .action(async (opts) => {
       try {

@@ -67,16 +67,18 @@ export function registerDumpBlocks(program: Command): void {
     .option(
       "--proposal-index <index>",
       "output index of the proposal cell within that transaction",
-      parseInt,
+      (v) => parseInt(v, 10),
       0,
     )
-    .requiredOption("--count <n>", "Number of blocks to dump", parseInt)
+    .requiredOption("--count <n>", "Number of blocks to dump", (v) =>
+      parseInt(v, 10),
+    )
     .requiredOption("--out <path>", "Output file path")
     .option("--rpc-url <url>", "CKB RPC endpoint", DEFAULT_RPC_URL)
     .option(
       "--concurrency <n>",
       "Number of parallel fetch operations",
-      parseInt,
+      (v) => parseInt(v, 10),
       10,
     )
     .action(async (opts) => {

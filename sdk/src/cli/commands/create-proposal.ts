@@ -15,10 +15,8 @@ export function registerCreateProposal(program: Command): void {
       "--private-key-file <path>",
       "Path to file containing hex private key",
     )
-    .requiredOption(
-      "--duration <blocks>",
-      "Voting duration in blocks",
-      parseInt,
+    .requiredOption("--duration <blocks>", "Voting duration in blocks", (v) =>
+      parseInt(v, 10),
     )
     .requiredOption(
       "--description <text>",
