@@ -10,7 +10,9 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:bun": "tsc --emitDeclarationOnly && bun build src/index.ts --outfile=dist/index.js --target=node --format=esm",
     "dev": "tsx src/cli/index.ts",
+    "dev:bun": "bun run src/cli/index.ts",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

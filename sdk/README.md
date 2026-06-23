@@ -8,36 +8,69 @@ Built on [CCC](https://github.com/ckb-devrel/ccc) (`@ckb-ccc/shell`).
 
 ```sh
 cd sdk
-pnpm install
+pnpm install    # or  bun install
 ```
+
+## Building
+
+### TypeScript (tsc) — library build with declarations
+
+```sh
+pnpm build      # or  bun run build
+```
+
+This produces `dist/` with `.js`, `.d.ts`, and `.js.map` files suitable for publishing.
+
+### Bun build — fast library bundle
+
+```sh
+bun run build:bun
+```
+
+Generates type declarations via `tsc --emitDeclarationOnly` then bundles the SDK into a single `dist/index.js` with `bun build`. Useful for quick iteration when type declarations are already up-to-date.
 
 ## CLI Usage
 
 Run directly without a build step:
 
 ```sh
+# with Bun — runs .ts files natively:
+bun run dev:bun <command> [options]
+bun run src/cli/index.ts <command> [options]
+# or after `bun link`:
+ckb-vote <command> [options]
+
+# with Node — uses tsx for on-the-fly execution:
+pnpm dev <command> [options]
 ./node_modules/.bin/tsx src/cli/index.ts <command> [options]
 # or after `pnpm link --global`:
 ckb-vote <command> [options]
 ```
 
+The `bin/ckb-vote.js` entry point auto-detects the runtime (Bun vs Node) and runs the CLI accordingly.
+
 ### Quick Start (devnet)
 
 ```sh
 # Create a proposal (20-block window)
+bun run dev:bun create-proposal \
+  --private-key-file ../tools/e2e/pk1 \
+  --duration 20 \
+  --description "test1"
+# or with pnpm:
 pnpm dev create-proposal \
   --private-key-file ../tools/e2e/pk1 \
   --duration 20 \
   --description "test1"
 
 # Vote YES on the proposal
-pnpm dev vote \
+bun run dev:bun vote \
   --private-key-file ../tools/e2e/pk1 \
   --proposal-tx-hash 0x<TX_HASH_FROM_ABOVE> \
   --vote yes
 
 # Consume / settle after proof is generated
-pnpm dev consume-proposal \
+bun run dev:bun consume-proposal \
   --private-key-file ../tools/e2e/pk1 \
   --proposal-tx-hash 0x<TX_HASH_FROM_ABOVE> \
   --proof ./proof-plonk.bin \
